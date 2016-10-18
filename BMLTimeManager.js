@@ -307,7 +307,7 @@ BMLTimeManager.prototype.addToStack = function(block){
 			if (block.endGlobalTime >= this.stack[i].startGlobalTime){
 				this.removeFromStacks(this.stack[i]);
 				this.stack.shift();
-				i--:
+				i--;
 			}
 		}
 		if (this.stack[0])
@@ -502,7 +502,7 @@ BMLTimeManager.prototype.addToBMLStack = function(block){
 
 	// Gaze
 	if (block.gaze)
-		this.processIntoBMLStack(block.gaze, this.gazeStack, , globalStart, block.composition);
+		this.processIntoBMLStack(block.gaze, this.gazeStack, globalStart, block.composition);
 	if (block.gazeShift)
 		this.processIntoBMLStack(block.gazeShift, this.gazeStack, globalStart, block.composition);
 

@@ -8,9 +8,6 @@
 // wait, synchronize, constraints, before, after
 
 
-// TODO: The REPLACE/APPEND/MERGE methods should be in reference of bml blocks,
-// not individual bml actions.
-
 function BMLTimeManager(){
 
 	// BML stack
@@ -82,7 +79,7 @@ BMLTimeManager.prototype.update = function(actionCallback){
 			else if (bml.isActive == true){
 				if (bml.endGlobalTime < this.time){
 					bml.isActive = false;
-					// TODO -> Send feedback? Not for instruction
+					// TODO -> Send feedback? Not needed for bml individual instructions?
 				}
 			}
 		}
@@ -124,7 +121,7 @@ BMLTimeManager.prototype.newBlock = function(block){
 
 
 BMLTimeManager.prototype.fixBlock = function(block){
-	// Define block start
+	// Define block start (in BML this is not specified, only in bml instructions, not in blocks)
 	block.start = block.start || 0.0;
 	// Check if it is a number
 	block.start = this.checkSync(block.start, block);
@@ -239,9 +236,14 @@ BMLTimeManager.prototype.checkSync = function(syncAttr, block, it){
 			for (var i = 0; i<this.stack.length; i++){
 				if (this.stack[i].id == ids[0]){ // Find block
 					tNumber = this.findTime(ids[1], ids[2], this.stack[i], it);
-					// TODO -> Compensate global times
-					// Check composite and find block place? Too much?
-					// Add flag for later check?
+					// The number is a reference to another block
+					// This number is not usable until the current block is placed according
+					// to composite. To mark it, the global time stamp is found and set to
+					// negative, in order to fix it later, once the current block is placed.
+					if (!isNaN(tnumber)){
+						tNumber += this.stack[i].startGlobalTime; // Global timestamp
+						tNumber *= -1; // Negative flag
+					}
 					break;
 				}
 			}
@@ -254,14 +256,15 @@ BMLTimeManager.prototype.checkSync = function(syncAttr, block, it){
 		}
 		// Add offset
 		if (str.length == 2)
-			tNumber += parseFloat(str[1]);
+			tNumber += parseFloat(str[1]) * Math.sign(tNumber); // This last part is to compensate
+																// the negative flag (ref to other blocks)
 	}
 
 	return tNumber;
 
 }
 
-// TODO: timings will be in local, not global time. Thus, it is needed to find startGlobalTime
+
 BMLTimeManager.prototype.findTime = function(id, syncName, block, it){
 
 	var result = null;
@@ -421,17 +424,27 @@ BML.TimeManager.prototype.cleanBlock = function(block){
 
 BML.TimeManager.prototype.mergeBML = function(bml, stack, globalStart){
 	var merged = false;
+
+	// Refs to another block (negative global timestamp)
+	if (bml.start < 0) bml.start = (-bml.start) - globalStart; // The ref timestamp should be always bigger than globalStart
+	if (bml.end < 0) bml.end = (-bml.end) - globalStart;
+
 	bml.startGlobalTime = globalStart + bml.start;
 	bml.endGlobalTime = globalStart + bml.end;
 
-	// Modify all sync attributes to remove non-zero starts
+	// Check errors
+	if (bml.start < 0 ) console.error ("BML start is negative", bml.start, stack, globalStart);
+	if (bml.start < 0 ) console.error ("BML end is negative", bml.end, stack, globalStart);
+
+	// Modify all sync attributes to remove non-zero starts (offsets)
+	// Also fix refs to another block (negative global timestamp)
 	bml.end -= bml.start;
-	if (bml.attackPeak) bml.attackPeak -= bml.start;
-	if (bml.ready)		bml.ready -= bml.start;
-	if (bml.strokeStart)bml.strokeStart -= bml.start;
-	if (bml.stroke) 	bml.stroke -= bml.start;
-	if (bml.strokeEnd) 	bml.strokeEnd -= bml.start;
-	if (bml.relax)		bml.relax -= bml.start;
+	if (bml.attackPeak) this.mergeBMLSyncFix(bml.attackPeak, bml.start, globalStart);
+	if (bml.ready)		this.mergeBMLSyncFix(bml.ready, bml.start, globalStart);
+	if (bml.strokeStart)this.mergeBMLSyncFix(bml.strokeStart, bml.start, globalStart);
+	if (bml.stroke) 	this.mergeBMLSyncFix(bml.stroke, bml.start, globalStart);
+	if (bml.strokeEnd) 	this.mergeBMLSyncFix(bml.strokeEnd, bml.start, globalStart);
+	if (bml.relax)		this.mergeBMLSyncFix(bml.relax, bml.start, globalStart);
 	bml.start = 0;
 
 	// Empty
@@ -462,6 +475,21 @@ BML.TimeManager.prototype.mergeBML = function(bml, stack, globalStart){
 
 	return merged;
 }
+// Fix ref to another block (negative global timestamp) and remove start offset
+BMLTimeManager.prototype.mergeBMLSyncFix = function(syncAttr, start, globalStart){
+	// Ref to another block
+	if (syncAttr < 0) syncAttr = (-syncAttr) - globalStart;
+	// Remove offset
+	syncAttr -= start;
+
+	// Check error
+	if (syncAttr < 0)
+		console.error ("BML sync attribute is negative.", syncAttr, start, globalStart);
+
+	return syncAttr;
+}
+
+
 
 // Add bml actions to stacks with global timings
 BMLTimeManager.prototype.addToBMLStack = function(block){
@@ -530,7 +558,7 @@ BMLTimeManager.prototype.processIntoBMLStack = function(bml, stack, globalStart)
 	// First, we check if the block fits between other blocks, thus all bml instructions
 	// should fit in the stack.
 	if (!merged)
-		console.error("Could not add to stack, but it should've been possible. Bug");
+		console.error("Could not add to stack, but it should've been possible. Bug!", bml, stack, globalStart);
 	
 }
 

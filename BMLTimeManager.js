@@ -20,101 +20,110 @@ function BMLTimeManager(){
 	this.gestureStack = [];
 	this.poitingStack = [];
 
-	this.lg = [];
+	this.lgStack = [];
 
 
 	this.BMLStacks = [this.blinkStack, this.gazeStack, this.faceStack, this.headStack,
-						this.headDirStack, this.speechStack, this.lg,
+						this.headDirStack, this.speechStack, this.lgStack,
 						this.gestureStack, this.poitingStack];
 
 	// Block stack
 	this.stack = [];
-
-	// Active blocks
-	this.activeBlocks = [];
 }
 
 
-// TODO: UPDATE, CALL ACTIONS AND PROVIDE FEEDBACK
-BMLTimeManager.prototype.update = function(actionCallback){
+// TODO: CHECK APPEND/REPLACE METHODS. PROVIDE FEEDBACK AND WARNINGS
+BMLTimeManager.prototype.update = function(actionCallback, time){
+
 	// Time now
-	var d = new Date();
-	this.time = d.getSeconds() + 0.001*d.getMilliseconds();
+	//var d = new Date();
+	this.time = time;// || d.getSeconds() + 0.001*d.getMilliseconds();
 
 	// Several blocks can be active (MERGE composition)
 	for (var i = 0; i<this.stack.length; i++){
+    
 		// If it is not active
 		if (this.stack[i].isActive === undefined){
 			// Block starts
 			if (this.stack[i].startGlobalTime < this.time){
 				this.stack[i].isActive = true;
-				this.activeBlocks.push(this.stack[i]);
+        // Feedback
+        this.progressFeedback(this.stack[i].id, "start", this.time);
 			}
 		}
-		// Block has ended
-		else if (this.stack[i].isActive == false){
-			this.removeFromStacks(this.stack[i]);
-			this.stack.splice(i, 1);
-			i--;
-			// TODO -> send feedback
-		}
-	}
+    // Check if has ended
+    else if (this.stack[i].isActive){
+      if (this.stack[i].endGlobalTime < this.time){
+        this.stack[i].isActive = false;
+        // Feedback
+        this.progressFeedback(this.stack[i].id, "end", this.time);
+        // Remove
+        this.removeFromStacks(this.stack[i]);
+        this.stack.splice(i, 1);
+        i--;
+      }
+    }
+  }
 
-	// Check active BML and blocks
-	for (var i = 0; i < this.activeBlocks.length; i++){
-		var block = this.activeBlocks[i];
-		var keys = keys(this.activeBlocks[i]);
-		for (var j = 0; j < keys.length; j++){
-			var bml = block[keys[i]];
-			// If it is not active
-			if (bml.isActive === undefined){
-				// Check start time and call it
-				if (bml.startGlobalTime < this.time){
-					bml.isActive = true;
-					actionCallback(keys[i], bml); // CALL BML INSTRUCTION
-					// TODO -> Call to do action
-				}
-			} 
-			// Check when it ends
-			else if (bml.isActive == true){
-				if (bml.endGlobalTime < this.time){
-					bml.isActive = false;
-					// TODO -> Send feedback? Not needed for bml individual instructions?
-				}
-			}
-		}
-	}
+	// Check active BML and blocks (from active blocks, not BMLStacks?)
+  for (var i = 0; i< this.BMLStacks.length; i++){
+    // Select bml instructions stack
+    var stack = this.BMLStacks[i];
+    for (var j = 0; j<stack.length; j++){
+      var bml = stack[j];
+      // BML is not active
+      if (bml.isActive === undefined){
+        // Set BML to active
+        if (bml.startGlobalTime < this.time){
+          bml.isActive = true;
+          actionCallback(bml.key, bml); // CALL BML INSTRUCTION
+        }
+      }
+      // BML has finished
+      else if (bml.isActive){
+        if (bml.endGlobalTime < this.time){
+          bml.isActive = false;
+          // Remove from bml stack
+          stack.splice(j, 1);
+          j--; 
+        }
+      }
+    }
+  }
+  
 
-	// Clean stacks
-	for (var i = 0; i < this.activeBlocks.length; i++){
-		if (this.activeBlocks[i].endGlobalTime < this.time){
-			this.activeBlocks[i].isActive = false;
-			this.activeBlocks.splice(i, 1);
-		}
-	}
-
-	
 }
 
 
 
 
-BMLTimeManager.prototype.newBlock = function(block){
+BMLTimeManager.prototype.newBlock = function(block, time){
 
 	// Time now
-	var d = new Date();
-	this.time = d.getSeconds() + 0.001*d.getMilliseconds();
+	//var d = new Date();
+	this.time = time || LS.GlobalScene.time;// ||d.getSeconds() + 0.001*d.getMilliseconds();
 
+  // TODO: require
+  
 	// Fix and Sychronize (set missing timings) (should substitute "start:gaze1:end + 1.1" by a number)
 	this.fixBlock(block);
 
 	// TODO: constraint (synchronize, after, before) and wait
 
-	// Add to stack
+	// Remove blocks with no content
+  if (block.end == 0){
+    console.error ("Refused block.\n", JSON.stringify(block));
+    return;
+  }
+  
+  // Add to stack
 	this.addToStack(block);
 
 	// Check timing errors
 	this.check();
+
+  //console.log("FIXED BLOCK.", JSON.stringify(block));
+  //console.log(this.BMLStacks);
 
 }
 
@@ -128,31 +137,30 @@ BMLTimeManager.prototype.fixBlock = function(block){
 
 	// Define timings and find sync attributes
 	// Blink
-	if (block.blink) fixBML(block.blink, block, {start: 0, attackPeak: 0.2, relax: 0.2, end: 0.5});
+	if (block.blink) block.blink = this.fixBML(block.blink, "blink", block, {start: 0, attackPeak: 0.2, relax: 0.2, end: 0.5});
 	// Gaze
-	if (block.gaze) fixBML(block.gaze, block, {start: 0, ready: 0.33, relax: 0.66, end: 2.0});
+	if (block.gaze) block.gaze = this.fixBML(block.gaze, "gaze", block, {start: 0, ready: 0.33, relax: 0.66, end: 2.0});
 	// GazeShift
-	if (block.gazeShift) fixBML(block.gazeShift,{start: 0, end: 2.0});
+	if (block.gazeShift) block.gazeShift = this.fixBML(block.gazeShift, "gazeShift", block, {start: 0, end: 2.0});
 	// Head
-	if (block.head) fixBML(block.head, block, {start: 0, ready: 0.3, strokeStart: 0.3, stroke: 0.4, strokeEnd: 0.6, relax: 0.7, end: 1.0});
+	if (block.head) block.head = this.fixBML(block.head, "head", block, {start: 0, ready: 0.3, strokeStart: 0.3, stroke: 0.4, strokeEnd: 0.6, relax: 0.7, end: 1.0});
 	// HeadDirection
-	if (block.headDirectionShift) fixBML(block.headDirectionShift, block, {start: 0, end: 2.0});
+	if (block.headDirectionShift) block.headDirectionShift = this.fixBML(block.headDirectionShift, "headDirectionShift", block, {start: 0, end: 2.0});
 	// Face
-	if (block.face) fixBML(block.face, block, {start: 0, attackPeak: 0.4, relax: 0.6, end: 1});
+	if (block.face) block.face = this.fixBML(block.face, "face", block, {start: 0, attackPeak: 0.4, relax: 0.6, end: 1});
 	// FaceShift
-	if (block.faceShift) fixBML(block.faceShift, block, {start: 0, end: 1});
+	if (block.faceShift) block.faceShift = this.fixBML(block.faceShift, "faceShift", block, {start: 0, end: 1});
 	// Speech (several instructions not implemented)
-	if (block.speech) fixBML(block.speech, block, {start: 0, end: 4});
+	if (block.speech) block.speech = this.fixBML(block.speech, "speech", block, {start: 0, end: 4});
 	// Gesture
-	if (block.gesture) fixBML(block.gesture, block,  {start: 0, ready: 0.3, strokeStart: 0.3, stroke: 0.4, strokeEnd: 0.6, relax: 0.7, end: 1.0});
+	if (block.gesture) block.gesture = this.fixBML(block.gesture, "gesture", block,  {start: 0, ready: 0.3, strokeStart: 0.3, stroke: 0.4, strokeEnd: 0.6, relax: 0.7, end: 1.0});
 	// Pointing
-	if (block.pointing) fixBML(block.pointing, block,  {start: 0, ready: 0.3, strokeStart: 0.3, stroke: 0.4, strokeEnd: 0.6, relax: 0.7, end: 1.0});
+	if (block.pointing) block.pointing = this.fixBML(block.pointing, "pointing", block,  {start: 0, ready: 0.3, strokeStart: 0.3, stroke: 0.4, strokeEnd: 0.6, relax: 0.7, end: 1.0});
 
 	// Language-generation
-	if (block.lg) fixBML(block.lg, block, {start: 0, end: 4});
+	if (block.lg) block.lg = this.fixBML(block.lg, "lg", block, {start: 0, end: 4});
 
-
-	// Check particular properties?
+	// Check particular properties or remove?
 
 	// Constraint element
 
@@ -160,18 +168,27 @@ BMLTimeManager.prototype.fixBlock = function(block){
 
 	// Find end of block
 	block.end = this.findEndOfBlock(block);
+
 }
 
 
-BMLTimeManager.prototype.fixBML = function(bml, block, sync){
+BMLTimeManager.prototype.fixBML = function(bml, key, block, sync){
 	// Several instructions inside
-	if (bml.length !== undefined){
+	if (bml.constructor === Array){
 		for (var i = 0; i < bml.length; i++)
-			this.fixBML(bml[i], block, sync);
+			bml[i] = this.fixBML(bml[i], key, block, sync);
+    return bml;
 	}
+  // Check if is it an object
+  if (typeof bml !== "object" || bml === null)
+    bml = {};
+  
+  // Define type (key)
+  bml.key = key;
+  
 	// Define timings
-	var keys = keys(sync);
-	
+	var keys = Object.keys(sync);
+	 
 	// START
 	// Check sync
 	bml.start = this.checkSync(bml.start, block);
@@ -181,12 +198,16 @@ BMLTimeManager.prototype.fixBML = function(bml, block, sync){
 	// END
 	// Check sync
 	bml.end = this.checkSync(bml.end, block);
+ 
 	// If no "end", apply default sync attributes
 	if (bml.end === undefined){
-		for (var i = 0; i < keys.length; i++)
-			bml[keys[i]] = sync[keys[i]];
-		return;
+    for (var i = 0; i < keys.length; i++){
+      if (keys[i]!= "start")
+				bml[keys[i]] = sync[keys[i]] + bml.start;
+    }
+		return bml;
 	}
+  
 
 	// OTHER SYNC
 	// If start and end are defined, fill other sync points.
@@ -198,6 +219,8 @@ BMLTimeManager.prototype.fixBML = function(bml, block, sync){
 		if (bml[keys[i]] === undefined)
 			 bml[keys[i]] = (bml.end - bml.start)*sync[keys[i]] + bml.start;
 	}
+  
+  return bml;
 }
 
 
@@ -205,7 +228,7 @@ BMLTimeManager.prototype.checkSync = function(syncAttr, block, it){
 	
 	// Check if undefined
 	if (syncAttr === undefined){
-		console.log("Sync attr undefined.", syncAttr, block, it);
+		//console.log("Sync attr undefined.", syncAttr, block, it);
 		return undefined;
 	}
 
@@ -269,7 +292,7 @@ BMLTimeManager.prototype.findTime = function(id, syncName, block, it){
 
 	var result = null;
 	// Check all keys
-	keys = keys(block);
+	keys = Object.keys(block);
 
 	for (var i = 0; i<keys.length; i++){
 		if (block[keys[i]].id == id){
@@ -280,7 +303,7 @@ BMLTimeManager.prototype.findTime = function(id, syncName, block, it){
 
 	// Check that result is valid
 	if (result == null)
-		console.error("Sync attr "+ id + ":" + syncName +" not found.", block);
+		console.error("Sync attr "+ id + ":" + syncName +" not found. Setting default values.", block);
 	// Sync attr is another sync reference
 	else if (isNaN(result)){
 		console.log("Synchronization: looking for: ", result);
@@ -298,7 +321,7 @@ BMLTimeManager.prototype.findTime = function(id, syncName, block, it){
 
 BMLTimeManager.prototype.addToStack = function(block){
 
-	if (block.composition == "OVERWRITE"){
+	if (block.composition == "OVERWRITE"){ // Doens't make sense, only for individual stacks, not whole
 		// Substitute in stack
 		block.startGlobalTime = this.time + block.start;
 		block.endGlobalTime = this.time + block.end;
@@ -321,7 +344,7 @@ BMLTimeManager.prototype.addToStack = function(block){
 		if (this.stack.length == 0){
 			block.startGlobalTime = this.time + block.start;
 			block.endGlobalTime = this.time + block.end;
-			stack[0] = block;
+			this.stack[0] = block;
 		}
 		// Last action in the stack (if start != 0 waiting time?)
 		else {
@@ -344,7 +367,7 @@ BMLTimeManager.prototype.addToStack = function(block){
 			block.endGlobalTime = block.startGlobalTime + block.end;
 
 			// Remove following blocks
-			for (var i = 1; i<tmp.length; i++)
+			for (var i = 1; i<this.stack.length; i++)
 				this.removeFromStacks(this.stack[i]);
 			
 			this.stack[1] = block;
@@ -360,21 +383,24 @@ BMLTimeManager.prototype.addToStack = function(block){
 		}
 		// Merge and add to BML stacks
 		else{ // Try to merge, if not, add "del" variable to bml
-			if (block.blink) block.blink.del = 							!this.mergeBML(block.blink, this.blinkStack, this.time + block.start);
-			if (block.gaze) block.gaze.del = 							!this.mergeBML(block.gaze, this.gazeStack, this.time + block.start); // This could be managed differently (gazeManager in BMLRealizer.js)
-			if (block.gazeShift) gazeShift.blink.del = 					!this.mergeBML(block.gazeShift, this.gazeStack, this.time + block.start);
-			if (block.face) block.face.del = 							!this.mergeBML(block.face, this.faceStack, this.time + block.start);
-			if (block.faceShift) block.faceShift.del = 					!this.mergeBML(block.faceShift, this.faceStack, this.time + block.start);
-			if (block.head) block.head.del = 							!this.mergeBML(block.head, this.headStack, this.time + block.start);
-			if (block.headDirectionShift) block.headDirectionShift.del = !this.mergeBML(block.headDirectionShift, this.headDirStack, this.time + block.start);
-			if (block.speech) block.speech.del = 						!this.mergeBML(block.speech, this.speechStack, this.time + block.start);
-			if (block.gesture) block.gesture.del = 						!this.mergeBML(block.gesture, this.gestureStack, this.time + block.start);
-			if (block.pointing) block.pointing.del = 					!this.mergeBML(block.head, this.pointingStack, this.time + block.start);
+			if (block.blink) this.processIntoBMLStack			(block.blink, this.blinkStack, this.time + block.start);
+			if (block.gaze) this.processIntoBMLStack			(block.gaze, this.gazeStack, this.time + block.start); // This could be managed differently (gazeManager in BMLRealizer.js)
+			if (block.gazeShift) this.processIntoBMLStack	(block.gazeShift, this.gazeStack, this.time + block.start);
+			if (block.face) this.processIntoBMLStack			(block.face, this.faceStack, this.time + block.start);
+			if (block.faceShift) this.processIntoBMLStack	(block.faceShift, this.faceStack, this.time + block.start);
+			if (block.head) this.processIntoBMLStack			(block.head, this.headStack, this.time + block.start);
+			if (block.headDirectionShift) this.processIntoBMLStack	(block.headDirectionShift, this.headDirStack, this.time + block.start);
+			if (block.speech) this.processIntoBMLStack		(block.speech, this.speechStack, this.time + block.start);
+			if (block.gesture) this.processIntoBMLStack		(block.gesture, this.gestureStack, this.time + block.start);
+			if (block.pointing) this.processIntoBMLStack	(block.head, this.pointingStack, this.time + block.start);
+      
+      if (block.lg) this.processIntoBMLStack	(block.lg, this.lgStack, this.time + block.start);
 			
-			//TODO - Send feedback
+			//TODO - Send warning feedback
 
-			// Clean block
+      // Clean block
 			this.cleanBlock(block);
+
 			// Add to block stack
 			block.startGlobalTime = this.time + block.start;
 			block.endGlobalTime = this.time + block.end;
@@ -396,14 +422,23 @@ BMLTimeManager.prototype.addToStack = function(block){
 }
 
 
-BML.TimeManager.prototype.removeFromStacks = function(block){
-	var keys = keys(block);
+BMLTimeManager.prototype.removeFromStacks = function(block){
+	var keys = Object.keys(block);
 	// Add delete variable in block to bml instructions
 	for (var i = 0; i < keys.length; i++){ // Through bml instructions
-		var kk = keys(block[keys[i]]);
-		if (kk.length != 0) // If is an object, add del variable
-			block[keys[i]].del = true;
-	}
+		var bml = block[keys[i]];
+    if (bml !== null || bml !== undefined){
+      // Is an array of bml instructions
+      if (bml.constructor === Array)
+         for (var j = 0; j <bml.length; j++)
+           bml[j].del = true;
+      
+      if (typeof bml === "object")
+				bml.del = true;
+    } 
+	}		
+    
+  
 	// Remove from stacks bml with del
 	for (var i = 0; i<this.BMLStacks.length; i++){ // Through list of stacks
 		for (var j = 0; j<this.BMLStacks[i].length; j++) // Through stack
@@ -413,16 +448,26 @@ BML.TimeManager.prototype.removeFromStacks = function(block){
 }
 
 
-BML.TimeManager.prototype.cleanBlock = function(block){
-	var keys = keys(block);
+BMLTimeManager.prototype.cleanBlock = function(block){
+	var keys = Object.keys(block);
 	for (var i = 0; i<keys.length; i++){
-		if (block[keys[i]].del)
-			delete block[keys[i]];
+    var bml = block[keys[i]];
+    if (bml !== null || bml !== undefined){
+      // Is an array of bml instructions
+      if (bml.constructor === Array)
+         for (var j = 0; j <bml.length; j++)
+           if (bml[j].del)
+             delete block[keys[i]];
+             
+      if (bml.del)
+				delete block[keys[i]];
+      
+    }
 	}
 }
 
 
-BML.TimeManager.prototype.mergeBML = function(bml, stack, globalStart){
+BMLTimeManager.prototype.mergeBML = function(bml, stack, globalStart){
 	var merged = false;
 
 	// Refs to another block (negative global timestamp)
@@ -439,12 +484,13 @@ BML.TimeManager.prototype.mergeBML = function(bml, stack, globalStart){
 	// Modify all sync attributes to remove non-zero starts (offsets)
 	// Also fix refs to another block (negative global timestamp)
 	bml.end -= bml.start;
-	if (bml.attackPeak) this.mergeBMLSyncFix(bml.attackPeak, bml.start, globalStart);
-	if (bml.ready)		this.mergeBMLSyncFix(bml.ready, bml.start, globalStart);
-	if (bml.strokeStart)this.mergeBMLSyncFix(bml.strokeStart, bml.start, globalStart);
-	if (bml.stroke) 	this.mergeBMLSyncFix(bml.stroke, bml.start, globalStart);
-	if (bml.strokeEnd) 	this.mergeBMLSyncFix(bml.strokeEnd, bml.start, globalStart);
-	if (bml.relax)		this.mergeBMLSyncFix(bml.relax, bml.start, globalStart);
+  var tmpStart = bml.start;
+	if (bml.attackPeak) bml.attackPeak = this.mergeBMLSyncFix(bml.attackPeak, bml.start, globalStart);
+	if (bml.ready) bml.ready = this.mergeBMLSyncFix(bml.ready, bml.start, globalStart);
+	if (bml.strokeStart) bml.strokeStart = this.mergeBMLSyncFix(bml.strokeStart, bml.start, globalStart);
+	if (bml.stroke) bml.stroke = this.mergeBMLSyncFix(bml.stroke, bml.start, globalStart);
+	if (bml.strokeEnd) bml.strokeEnd =	this.mergeBMLSyncFix(bml.strokeEnd, bml.start, globalStart);
+	if (bml.relax) bml.relax = this.mergeBMLSyncFix(bml.relax, bml.start, globalStart);
 	bml.start = 0;
 
 	// Empty
@@ -466,7 +512,7 @@ BML.TimeManager.prototype.mergeBML = function(bml, stack, globalStart){
 		}
 		// End of stack
 		if (!merged){
-			if (stack[stack.length-1].endGlobalTime < bml.startGlobalTime){
+			if (stack[stack.length-1].endGlobalTime <= bml.startGlobalTime){
 				stack.push(bml);
 				merged = true;
 			}
@@ -475,6 +521,8 @@ BML.TimeManager.prototype.mergeBML = function(bml, stack, globalStart){
 
 	return merged;
 }
+
+
 // Fix ref to another block (negative global timestamp) and remove start offset
 BMLTimeManager.prototype.mergeBMLSyncFix = function(syncAttr, start, globalStart){
 	// Ref to another block
@@ -527,17 +575,22 @@ BMLTimeManager.prototype.addToBMLStack = function(block){
 
 
 
-BMLTimeManager.prototype.findEndOfBlock = function(bml){
-	var keys = keys(bml);
+BMLTimeManager.prototype.findEndOfBlock = function(block){
+	var keys = Object.keys(block);
 	var latestEnd = 0;
 	for (var i = 0; i < keys.length; i++){
-		if (bml.keys[i].end !== undefined)
-			latestEnd = Math.max(bml.keys[i].end, latestEnd);
-		else // several instructions inside class
-			for (var j = 0; j < bml.keys[i].length; j++)
-				latestEnd = Math.max(bml.keys[i][j].end, latestEnd);
-
+    var bml = block[keys[i]];
+    if (bml === null){}
+      //console.error("Empty bml instruction.", keys[i], block);
+    else if (bml.end !== undefined)
+			latestEnd = Math.max(bml.end, latestEnd);
+    else if (bml.constructor === Array) // several instructions inside class
+      for (var j = 0; j < bml.length; j++){
+        if (bml[j].end !== undefined)
+					latestEnd = Math.max(bml[j].end, latestEnd);
+      }
 	}
+
 	return latestEnd;
 }
 
@@ -547,19 +600,23 @@ BMLTimeManager.prototype.processIntoBMLStack = function(bml, stack, globalStart)
 	
 
 	// Several instructions
-	if (bml.length !== undefined){
+	if (bml.constructor === Array){
 		for (var i = 0; i < bml.length; i++)
 			this.processIntoBMLStack(bml[i], stack, globalStart);
+    return;
 	}
 
 	// Could be called directly? Should always return true
 	var merged = this.mergeBML(bml,stack,globalStart);
+  bml.del = !merged;
 
 	// First, we check if the block fits between other blocks, thus all bml instructions
 	// should fit in the stack.
-	if (!merged)
-		console.error("Could not add to stack, but it should've been possible. Bug!", bml, stack, globalStart);
-	
+  if (!merged)
+    console.error("Could not add to stack. \nBML: ", 
+                  JSON.stringify(bml), "\nSTACK: ", 
+                  JSON.stringify(stack));
+ 
 }
 
 // Checks that all stacks are ordered according to the timeline (they should be as they are insterted in order)
@@ -571,9 +628,10 @@ BMLTimeManager.prototype.check = function(){
 	if (this.errorCheck(this.headDirStack)) console.error("Previous error is in headDir stack");
 	if (this.errorCheck(this.speechStack)) console.error("Previous error is in speech stack");
 	if (this.errorCheck(this.gestureStack)) console.error("Previous error is in gesture stack");
+	if (this.errorCheck(this.lgStack)) console.error("Previous error is in lg stack");
 
 
-	if (this.errorCheck(this.stack)) console.error("Previous error is in block stack");
+	//if (this.errorCheck(this.stack)) console.error("Previous error is in block stack");
 }
 
 BMLTimeManager.prototype.errorCheck = function(stack){
@@ -585,3 +643,21 @@ BMLTimeManager.prototype.errorCheck = function(stack){
 		}
 	}
 }
+
+
+
+
+// Provide feedback
+BMLTimeManager.prototype.progressFeedback = function(id, sync, time){
+  // Create the object only once
+  if (!this.pFeedback)
+    this.pFeedback = {blockProgress: {}};
+  
+  var fbk = this.pFeedback;
+  fbk.blockProgress.id = id + ":" + sync;
+  fbk.blockProgress.globalTime = time;
+  //fbk.blockProgress.characterId = characterId;
+  
+  console.log(JSON.stringify(fbk));
+}
+

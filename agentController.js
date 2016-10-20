@@ -7,6 +7,8 @@ if (!LS.Globals)
 
 
 this.onStart = function(){
+  
+  LS.Globals.BMLManager = new BMLTimeManager();
 
   LS.Globals.ws = {};
   LS.Globals.ws.send = function(e){console.log("WS should send ", e)};
@@ -15,6 +17,7 @@ this.onStart = function(){
 
 this.onUpdate = function(dt)
 {
+  LS.Globals.BMLManager.update(LS.Globals.processBML, LS.GlobalScene.time);
   //node.scene.refresh();
 }
 
@@ -32,15 +35,19 @@ LS.Globals.processMsg = function(msg){
   console.log("Processing message: ", msg);
   
   
-  // Id
+  // Client id -> should be characterId?
   if (msg.clientId !== undefined && !LS.Globals.ws.id){
     LS.Globals.ws.id = msg.clientId;
     
     console.log("Client ID: ", msg.clientId);
     LS.infoText = "Client ID: " + msg.clientId;
+    
+    return;
   }
+
+  LS.Globals.BMLManager.newBlock(msg, LS.GlobalScene.time);
   
-  
+  /*
   // Text
   if (msg.text)
     LS.Globals.transcript = msg.text;
@@ -92,11 +99,51 @@ LS.Globals.processMsg = function(msg){
   if (msg.animation){
     
   }
-  
+  */
 }
 
 
-
+// Process message
+LS.Globals.processBML = function(key, bml){
+  
+  switch (key){
+    case "blink":
+      thatFacial.newBlink(bml);
+      thatFacial._blinking = true;
+      break;
+    case "gaze":
+      thatFacial.newGaze(bml, false);
+      break;
+    case "gazeShift":
+      thatFacial.newGaze(bml, true);
+      break;
+    case "head":
+      thatFacial.newHeadBML(bml);
+      break;
+    case "headDirectionShift":
+      bml.influence = "HEAD";
+      thatFacial.newGaze(bml, true, null, true);
+      break;
+    case "face":
+      thatFacial.newFA(bml, false);
+      break;
+    case "faceShift":
+      thatFacial.newFA(bml, true);
+      break;
+    case "speech":
+      thatFAcial.newSpeech(bml);
+      break;
+    case "gesture":
+      break;
+    case "pointing":
+      break;
+    case "lg":
+      thatFacial._visSeq.sequence = bml.sequence;
+      thatFacial._audio.src = bml.audioURL; // When audio loads it plays
+      console.log("HEEEEEEEEEEEERRRRRRRRRRRRRRRREEEEEEEEEE");
+      break;
+  }
+}
 
 
 
@@ -112,8 +159,11 @@ var msg = {
         "language": "pl"
     },
     "data": {
-        "blink": true,
-          "blinkDuration":0.5
+        "blink": {
+          "start": 0,
+          "end": 0.5
+        },
+        "composite": "APPEND"
     }
 }
 

@@ -2,11 +2,9 @@
 // Globals
 if (!LS.Globals)
   LS.Globals = {};
-  
-  
-
 
 this.onStart = function(){
+  LS.Globals.BMLManager = new BMLTimeManager();
 
   LS.Globals.ws = {};
   LS.Globals.ws.send = function(e){console.log("WS should send ", e)};
@@ -15,11 +13,16 @@ this.onStart = function(){
 
 this.onUpdate = function(dt)
 {
+  if (LS.Globals.ws)
+    LS.Globals.BMLManager.update(LS.Globals.processBML, LS.GlobalScene.time, LS.Globals.ws.send);
+  else
+    LS.Globals.BMLManager.update(LS.Globals.processBML, LS.GlobalScene.time);
   //node.scene.refresh();
 }
 
 
 LS.Globals.changeVolume = function(vol){
+  var thatFacial = LS.Globals.Facial;
   if (thatFacial)
     if (thatFacial._audio)
       thatFacial._audio.volume = vol;
@@ -31,71 +34,68 @@ LS.Globals.processMsg = function(msg){
   msg = JSON.parse(msg);
   console.log("Processing message: ", msg);
   
-  
   // Id
   if (msg.clientId !== undefined && !LS.Globals.ws.id){
     LS.Globals.ws.id = msg.clientId;
     
     console.log("Client ID: ", msg.clientId);
     LS.infoText = "Client ID: " + msg.clientId;
-  }
-  
-  
-  // Text
-  if (msg.text)
-    LS.Globals.transcript = msg.text;
-  
-  
-  // Blink
-  if (msg.blink)
-    if (LS.Globals.blink)
-      LS.Globals.blink(msg.blink, msg.id);
-  
-  
-  
-  // Gaze
-  if (msg.gaze)
-    LS.Globals.gaze(msg.gaze, msg.id);
-  
-  if (msg.gazeShift)
-    LS.Globals.gazeShift(msg.gazeShift, msg.id);
-  
-
-  // Head
-  if (msg.head)
-    LS.Globals.head(msg.head, msg.id);
-  
-  if (msg.headDirectionShift)
-    LS.Globals.headDirectionShift(msg.headDirectionShift, msg.id);
-  
-  
-  // Facial expression
-  if (msg.face){
-    // Apply Whissel Wheel
-    LS.Globals.face(msg.face, msg.id);
-  }
-  if (msg.faceShift){
-    // Apply Whissel Wheel
-    LS.Globals.faceShift(msg.faceShift, msg.id);
-  }
-  
-  
-  
-  // Lipsync
-  if (msg.audioURL){
-    LS.Globals.lipsync(msg);
-  }
-  
-  
-  
-  // Gestures
-  if (msg.animation){
     
+    return;
   }
+  
+  console.log(JSON.stringify(msg));
+  LS.Globals.BMLManager.newBlock(msg, LS.GlobalScene.time);
   
 }
 
 
+
+// Process message
+LS.Globals.processBML = function(key, bml){
+  //console.log("PROCESS BML\n", key, JSON.stringify(bml));
+  if(!LS.Globals.Facial)
+    return;
+  
+  var thatFacial = LS.Globals.Facial;
+  
+  switch (key){
+    case "blink":
+      thatFacial.newBlink(bml);
+      thatFacial._blinking = true;
+      break;
+    case "gaze":
+      thatFacial.newGaze(bml, false);
+      break;
+    case "gazeShift":
+      thatFacial.newGaze(bml, true);
+      break;
+    case "head":
+      thatFacial.newHeadBML(bml);
+      break;
+    case "headDirectionShift":
+      bml.influence = "HEAD";
+      thatFacial.newGaze(bml, true, null, true);
+      break;
+    case "face":
+      thatFacial.newFA(bml, false);
+      break;
+    case "faceShift":
+      thatFacial.newFA(bml, true);
+      break;
+    case "speech":
+      thatFacial.newSpeech(bml);
+      break;
+    case "gesture":
+      break;
+    case "pointing":
+      break;
+    case "lg":
+      thatFacial._visSeq.sequence = bml.sequence;
+      thatFacial._audio.src = bml.audioURL; // When audio loads it plays
+      break;
+  }
+}
 
 
 
@@ -112,8 +112,11 @@ var msg = {
         "language": "pl"
     },
     "data": {
-        "blink": true,
-          "blinkDuration":0.5
+        "blink": {
+          "start": 0,
+          "end": 0.5
+        },
+        "composition": "APPEND"
     }
 }
 

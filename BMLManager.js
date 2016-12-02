@@ -163,16 +163,15 @@ BMLTimeManager.prototype.fixBlock = function(block){
 	if (block.pointing) block.pointing = this.fixBML(block.pointing, "pointing", block,  {start: 0, ready: 0.3, strokeStart: 0.3, stroke: 0.4, strokeEnd: 0.6, relax: 0.7, end: 1.0});
 
 	// Language-generation
-  if (block.lg){ 
-    block.lg.end = block.lg.duration;
-    block.lg = this.fixBML(block.lg, "lg", block, {start: 0, end: 10});
-  }
+  if (block.lg) block.lg = this.fixBML(block.lg, "lg", block, {start: 0, end: 10});
+
 
 	// Check particular properties or remove?
 
 	// Constraint element
 
 	// Check coherence?
+
 
 	// Find end of block
 	block.end = this.findEndOfBlock(block);
@@ -255,9 +254,9 @@ BMLTimeManager.prototype.checkSync = function(syncAttr, block, it){
 	if (isNaN(tNumber)){
 		tNumber =  null;
 		// Find sync value
-		str = syncAttr.replace(/\s+/g, '');
+		var str = syncAttr.replace(/\s+/g, '');
 		str = str.split("+");
-		ids = str[0].split(":");
+		var ids = str[0].split(":");
 		// Two ids -> look inside block (gaze1:end)
 		if (ids.length == 2)
 			tNumber = this.findTime(ids[0], ids[1], block, it);
@@ -270,7 +269,7 @@ BMLTimeManager.prototype.checkSync = function(syncAttr, block, it){
 					// This number is not usable until the current block is placed according
 					// to composition. To mark it, the global time stamp is found and set to
 					// negative, in order to fix it later, once the current block is placed.
-					if (!isNaN(tnumber)){
+					if (!isNaN(tNumber)){
 						tNumber += this.stack[i].startGlobalTime; // Global timestamp
 						tNumber *= -1; // Negative flag
 					}
@@ -299,11 +298,15 @@ BMLTimeManager.prototype.findTime = function(id, syncName, block, it){
 
 	var result = null;
 	// Check all keys
-	keys = Object.keys(block);
-
+	var keys = Object.keys(block);
+  
+  // Clean spaces
+  id = id.replace(/\s/g, "");
+  syncName = syncName.replace(/\s/g, "");
+  
 	for (var i = 0; i<keys.length; i++){
     // Array of bmls
-    if (block[keys[i]].constructor == Array){
+    if (block[keys[i]].constructor === Array){
       var arr = block[keys[i]];
       for (var j = 0; j< arr.length; j++){
         if (arr[j].id == id){

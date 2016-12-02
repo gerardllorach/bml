@@ -38,13 +38,14 @@ LS.Globals.processMsg = function(msg){
   if (msg.clientId !== undefined && !LS.Globals.ws.id){
     LS.Globals.ws.id = msg.clientId;
     
-    console.log("Client ID: ", msg.clientId);
-    LS.infoText = "Client ID: " + msg.clientId;
+    console.log("Character ID: ", msg.clientId);
+    LS.infoText = "Character ID: " + msg.clientId;
     
     return;
   }
   
-  console.log(JSON.stringify(msg));
+  //console.log(JSON.stringify(msg));
+  
   LS.Globals.BMLManager.newBlock(msg, LS.GlobalScene.time);
   
 }

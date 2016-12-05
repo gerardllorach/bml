@@ -119,13 +119,14 @@ FacialExpr.prototype.lexemes = {"OBLIQUE_BROWS": 0, "RAISE_BROWS": 0, "RAISE_LEF
                                 "LOWER_BROWS": 0, "LOWER_LEFT_BROW": 0, "LOWER_RIGHT_BROW": 0,
                                 "LOWER_MOUTH_CORNERS": 0, "LOWER_LEFT_MOUTH_CORNER": 0, "LOWER_RIGHT_MOUTH_CORNER": 0,
                                 "RAISE_MOUTH_CORNERS": 0, "RAISE_LEFT_MOUTH_CORNER": 0, "RAISE_RIGHT_MOUTH_CORNER": 0,
-                                "OPEN_MOUTH": 0, "OPEN_LIPS": 0, "WIDEN_EYES": 0, "CLOSE_EYES": 0};
+                                "OPEN_MOUTH": 0, "OPEN_LIPS": 0, "PRESS_LIPS": 0, "WIDEN_EYES": 0, "CLOSE_EYES": 0};
 
 
 // Blend shapes indices
 FacialExpr.prototype.LOWER_MOUTH_CORNERS = 0; // sad
 FacialExpr.prototype.RAISE_MOUTH_CORNERS = 1; // happy
 FacialExpr.prototype.OPEN_LIPS = 2; // kiss? or small open jaw?
+FacialExpr.prototype.PRESS_LIPS = 3; // lips pressed
 FacialExpr.prototype.OPEN_MOUTH = 4; // jaw
 
 FacialExpr.prototype.LOWER_BROWS = 5; // brows down
@@ -449,7 +450,7 @@ FacialExpr.prototype.VA2BSW = function(valAro, facialBSW){
 
 // --------------------- GAZE (AND HEAD SHIFT DIRECTION) ---------------------
 // BML
-// <gaze or gazeShift start ready* relax* end influence target influence offsetAngle offsetDirection>
+// <gaze or gazeShift start ready* relax* end influence target offsetAngle offsetDirection>
 // influence [EYES, HEAD, NECK, SHOULDER, WAIST, WHOLE, ...]
 // offsetAngle relative to target
 // offsetDirection (of offsetAngle) [RIGHT, LEFT, UP, DOWN, UPRIGHT, UPLEFT, DOWNLEFT, DOWNRIGHT]

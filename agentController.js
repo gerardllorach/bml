@@ -2,21 +2,41 @@
 // Globals
 if (!LS.Globals)
   LS.Globals = {};
+  
+
+
 
 this.onStart = function(){
-  LS.Globals.BMLManager = new BMLTimeManager();
+  
+  if (window.BMLPlanner !== undefined)
+    LS.Globals.BMLPlanner = new BMLPlanner();
+  else
+    console.error("BML Planner not included");
+  
+  if (window.BMLTimeManager !== undefined)
+    LS.Globals.BMLManager = new BMLTimeManager();
+  else
+    console.error("BML Manager not included");
 
   LS.Globals.ws = {};
   LS.Globals.ws.send = function(e){console.log("WS should send ", e)};
+   
 }
 
 
 this.onUpdate = function(dt)
 {
-  if (LS.Globals.ws)
-    LS.Globals.BMLManager.update(LS.Globals.processBML, LS.GlobalScene.time, LS.Globals.ws.send);
-  else
+  var newBlock = null;
+  if (LS.Globals.BMLPlanner)
+    newBlock = LS.Globals.BMLPlanner.update(dt);
+  
+  if (LS.Globals.BMLManager)
     LS.Globals.BMLManager.update(LS.Globals.processBML, LS.GlobalScene.time);
+  
+  if (newBlock !== null){
+    //console.log(newBlock);
+    LS.Globals.BMLManager.newBlock(newBlock, LS.GlobalScene.time);
+  }
   //node.scene.refresh();
 }
 
@@ -34,22 +54,31 @@ LS.Globals.processMsg = function(msg){
   msg = JSON.parse(msg);
   console.log("Processing message: ", msg);
   
-  // Id
+  
+  // Client id -> should be characterId?
   if (msg.clientId !== undefined && !LS.Globals.ws.id){
     LS.Globals.ws.id = msg.clientId;
     
-    console.log("Character ID: ", msg.clientId);
-    LS.infoText = "Character ID: " + msg.clientId;
+    console.log("Client ID: ", msg.clientId);
+    LS.infoText = "Client ID: " + msg.clientId;
     
     return;
   }
-  
-  //console.log(JSON.stringify(msg));
-  
+
+  // Process block
+  // Create new bml if necessary
+
+  if (LS.Globals.BMLPlanner)
+    LS.Globals.BMLPlanner.newBlock(msg);
+  // Update to remove aborted blocks
+  if (!LS.Globals.BMLManager)
+    return;
+  LS.Globals.BMLManager.update(LS.Globals.processBML, LS.GlobalScene.time);
+ 
+  // Add new block to stack
   LS.Globals.BMLManager.newBlock(msg, LS.GlobalScene.time);
   
 }
-
 
 
 // Process message
@@ -62,8 +91,8 @@ LS.Globals.processBML = function(key, bml){
   
   switch (key){
     case "blink":
-      thatFacial.newBlink(bml);
       thatFacial._blinking = true;
+      thatFacial.newBlink(bml);
       break;
     case "gaze":
       thatFacial.newGaze(bml, false);
@@ -100,7 +129,6 @@ LS.Globals.processBML = function(key, bml){
 
 
 
-
 /*
 // How to send POST messages through webglstudio.org:8080
 var msg = {
@@ -117,7 +145,7 @@ var msg = {
           "start": 0,
           "end": 0.5
         },
-        "composition": "APPEND"
+        "composite": "APPEND"
     }
 }
 

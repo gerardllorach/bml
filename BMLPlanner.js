@@ -2,6 +2,8 @@
 
 // Or could be also called Gesture Generation.
 
+// TODO: change automatically to WAITING when SPEAKING finishes.
+// TODO: automatic blink, saccades, breathing, head and body movement.
 
 
 var BMLPlanner = function(){
@@ -30,10 +32,14 @@ BMLPlanner.prototype.update = function(dt){
 }
 
 BMLPlanner.prototype.transition = function(block){
+  if (block.control == "UNDERSTANDING" || block.control == "PLANNING")
+    block.control = "PROCESSING";
+  
   var nextState = block.control;
-  console.log(block.control);
+  
   if (nextState == this.state)
     return;
+  console.log("PREV STATE:", this.state, "\nNEXT STATE:", block.control);
 
   // Reset state time
   this.stateTime = 0;
@@ -233,7 +239,10 @@ BMLPlanner.prototype.abortSpeech = function(){
   // Cancel audio and lipsync in Facial
   if (LS.Globals.Facial){
     var facial = LS.Globals.Facial;
-    facial._audio.stop(); // Then paused is true and no facial actions
+    if (!facial._audio.paused){
+    	facial._audio.stop(); // Then paused is true and no facial actions
+      // Go to neutral face? Here or somewhere else?
+    }
   }
   // End all blocks in BMLManager
   if (LS.Globals.BMLManager){
@@ -249,7 +258,7 @@ BMLPlanner.prototype.attentionToUser = function(block){
   // If gazeShift already exists, modify
   // TODO
 
-	var end = 1 + Math.random();
+	var end = 0.5 + Math.random();
 	var startHead = 0;
   var startGaze = startHead + Math.random()*0.5; // Late start
   

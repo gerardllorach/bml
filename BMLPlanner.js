@@ -156,7 +156,7 @@ BMLPlanner.prototype.createBlock = function(){
     
     // press lips
     if (Math.random() < 0.3){
-      var lexeme = {lexeme: "PRESS_LIPS", amount: 0.25 + 0.5 * Math.random()};
+      var lexeme = {lexeme: "PRESS_LIPS", amount: 0.1 + 0.3 * Math.random()};
       if(block.face)
         block.face.lexeme.push(lexeme)
       else
@@ -307,6 +307,13 @@ BMLPlanner.prototype.attentionToUser = function(block){
 // Process language generation message
 // Adds new bml instructions according to the dialogue act and speech
 BMLPlanner.prototype.processSpeechBlock = function(bmlLG, block, isLast){
+  // Check that all content is there
+  if (!bmlLG.textTiming || !bmlLG.audioURL || !bmlLG.sequence || !bmlLG.valence || !bmlLG.arousal){
+    delete block.lg;
+    return;
+  }
+  
+  
   // Add to dialogue
   this.conversation += "KRISTINA: " + bmlLG.text + "\n";
   

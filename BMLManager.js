@@ -9,6 +9,10 @@
 
 
 function BMLTimeManager(){
+  
+  // BML instruction keys
+  this.bmlKeys = ["blink", "gaze", "gazeShift", "face", "faceShift",
+                  "head", "headDirectonShift", "lg", "gesture"];
 
 	// BML stack
 	this.blinkStack = [];
@@ -32,7 +36,7 @@ function BMLTimeManager(){
 }
 
 
-// TODO: CHECK APPEND/REPLACE METHODS. PROVIDE FEEDBACK AND WARNINGS
+// TODO: PROVIDE FEEDBACK AND WARNINGS
 BMLTimeManager.prototype.update = function(actionCallback, time, onBlockEnd){
 
 	// Time now
@@ -118,6 +122,7 @@ BMLTimeManager.prototype.newBlock = function(block, time){
 	// Remove blocks with no content
   if (block.end == 0){
     console.error ("Refused block.\n", JSON.stringify(block));
+    LS.Globals.ws.send(block.id + ": true"); // HARDCODED
     return;
   }
   
@@ -341,24 +346,30 @@ BMLTimeManager.prototype.findTime = function(id, syncName, block, it){
 
 BMLTimeManager.prototype.addToStack = function(block){
 
+ 	// OVERWRITE
 	if (block.composition == "OVERWRITE"){ // Doens't make sense, only for individual stacks, not whole
 		// Substitute in stack
+    
 		block.startGlobalTime = this.time + block.start;
 		block.endGlobalTime = this.time + block.end;
-		// If next block starts in the middle of the other
-		for (var i = 1; i<this.stack.length; i++){
-			if (block.endGlobalTime >= this.stack[i].startGlobalTime){
-				this.removeFromStacks(this.stack[i]);
-				this.stack.shift();
-				i--;
-			}
-		}
-		if (this.stack[0])
-			this.removeFromStacks(this.stack[0]);
 
-		this.stack[0] = block;
+   	// Add block to stack
+    if (this.stack.length == 0){
+      this.stack.push(block);
+    } else{
+      var last = this.stack[this.stack.length-1];
+      if (block.endGlobalTime < last.endGlobalTime){
+        this.stack[this.stack.length-1] = block;
+        this.stack.push(last);
+      } else
+        this.stack.push(block);
+    }
+
+    // Add to bml stack (called at the end of function)
 	}
 
+  
+  // APPEND
 	else if (block.composition == "APPEND"){
 		// No actions in the stack
 		if (this.stack.length == 0){
@@ -373,6 +384,8 @@ BMLTimeManager.prototype.addToStack = function(block){
 			this.stack.push (block);
 		}
 	}
+  
+  
 	// REPLACE
 	else if (block.composition == "REPLACE"){
 		// No actions in the stack
@@ -393,6 +406,8 @@ BMLTimeManager.prototype.addToStack = function(block){
 			this.stack[1] = block;
 		}
 	}
+  
+  
 	// MERGE
 	else {
 		// No actions in the stack
@@ -432,6 +447,7 @@ BMLTimeManager.prototype.addToStack = function(block){
           return;
 				}		
 			}*/
+      // Add at the end (the last one should be always the latest)
       var last = this.stack[this.stack.length-1];
       if (block.endGlobalTime < last.endGlobalTime){
         this.stack[this.stack.length-1] = block;
@@ -448,7 +464,7 @@ BMLTimeManager.prototype.addToStack = function(block){
 
 }
 
-
+// Removes all bml instructions from stacks
 BMLTimeManager.prototype.removeFromStacks = function(block){
 	var keys = Object.keys(block);
 	// Add delete variable in block to bml instructions
@@ -497,7 +513,7 @@ BMLTimeManager.prototype.cleanBlock = function(block){
 }
 
 
-BMLTimeManager.prototype.mergeBML = function(bml, stack, globalStart){
+BMLTimeManager.prototype.mergeBML = function(bml, stack, globalStart, overwrite){
 	var merged = false;
 
 	// Refs to another block (negative global timestamp)
@@ -532,22 +548,39 @@ BMLTimeManager.prototype.mergeBML = function(bml, stack, globalStart){
 		// Fits between
 		if (stack.length > 1){
 			for (var i = 0; i<stack.length-1; i++){
+        // Does it fit?
 				if (bml.startGlobalTime >= stack[i].endGlobalTime && bml.endGlobalTime <= stack[i+1].startGlobalTime){
-					tmp = stack.splice(i, stack.length);
-					stack.push(bml);
-					stack.concat(tmp);
-					merged = true;
-				}
+          if (!merged){
+            tmp = stack.splice(i, stack.length);
+            stack.push(bml);
+            stack.concat(tmp);
+            merged = true;
+          }
+        } 
+        // If it doesn't fit remove if overwrite
+        else if (overwrite){
+          // Remove from bml stack
+          stack.splice(i,1);
+          i--;
+        }
 			}
 		}
 		// End of stack
-		if (!merged){
+		if (!merged || overwrite){
 			if (stack[stack.length-1].endGlobalTime <= bml.startGlobalTime){
-				stack.push(bml);
-				merged = true;
-			}
+        if (!merged){
+          stack.push(bml);
+          merged = true;
+        }
+			} else if (overwrite)
+        stack.splice(stack.length-1, 1);
 		}
 	}
+  // After removing conflicting bml, add
+  if (overwrite && !merged){
+    stack.push(bml);
+  	merged = true;
+  }
 
 	return merged;
 }
@@ -561,7 +594,7 @@ BMLTimeManager.prototype.mergeBMLSyncFix = function(syncAttr, start, globalStart
 	syncAttr -= start;
 
 	// Check error
-	if (syncAttr < 0)
+  if (syncAttr < 0)
 		console.error ("BML sync attribute is negative.", syncAttr, start, globalStart);
 
 	return syncAttr;
@@ -637,26 +670,28 @@ BMLTimeManager.prototype.findEndOfBlock = function(block){
 
 
 // Add bml action to stack
-BMLTimeManager.prototype.processIntoBMLStack = function(bml, stack, globalStart){
+BMLTimeManager.prototype.processIntoBMLStack = function(bml, stack, globalStart, composition){
 	
+  // Overwrite
+  var overwrite = composition == "OVERWRITE";
 
 	// Several instructions
 	if (bml.constructor === Array){
 		for (var i = 0; i < bml.length; i++)
-			this.processIntoBMLStack(bml[i], stack, globalStart);
+			this.processIntoBMLStack(bml[i], stack, globalStart, composition);
     return;
 	}
 
 	// Could be called directly? Should always return true
-	var merged = this.mergeBML(bml,stack,globalStart);
+	var merged = this.mergeBML(bml,stack,globalStart, overwrite);
   bml.del = !merged;
 
 	// First, we check if the block fits between other blocks, thus all bml instructions
 	// should fit in the stack.
   if (!merged)
-    console.error("Could not add to stack. \nBML: ", 
-                  JSON.stringify(bml), "\nSTACK: ", 
-                  JSON.stringify(stack));
+    console.error("Could not add to " + bml.key + " stack. \n");// + "BML: ", 
+                  //JSON.stringify(bml), "\nSTACK: ", 
+                  //JSON.stringify(stack));
  
 }
 
@@ -691,6 +726,9 @@ BMLTimeManager.prototype.errorCheck = function(stack){
 
 // Provide feedback
 BMLTimeManager.prototype.progressFeedback = function(id, sync, time){
+
+  return;
+  
   // Create the object only once
   if (!this.pFeedback)
     this.pFeedback = {blockProgress: {}};

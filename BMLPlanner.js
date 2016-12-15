@@ -304,23 +304,36 @@ BMLPlanner.prototype.attentionToUser = function(block){
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
 // Process language generation message
 // Adds new bml instructions according to the dialogue act and speech
 BMLPlanner.prototype.processSpeechBlock = function(bmlLG, block, isLast){
-  // Check that all content is there
-  if (!bmlLG.textTiming || !bmlLG.audioURL || !bmlLG.sequence || !bmlLG.valence || !bmlLG.arousal){
-    delete block.lg;
-    return;
+  // Check if there is content
+  if (Object.keys(bmlLG).length == 0){
+  	console.error("Empty language generation");
+  	return;
   }
-  
   
   // Add to dialogue
   this.conversation += "KRISTINA: " + bmlLG.text + "\n";
   
 	// Raise eyebrows using longest word
-	var faceBrows = this.createBrowsUp(bmlLG);
+  var faceBrows = undefined;
+  if (bmlLG.textTiming)
+	 faceBrows = this.createBrowsUp(bmlLG);
 
 	// Valence face end of speech
+  if (!bmlLG.valence) bmlLG.valence = this.defaultValence;
 	var faceShiftsEnd = this.createEndFace(bmlLG);
 
 	// Head nod at start
@@ -340,8 +353,10 @@ BMLPlanner.prototype.processSpeechBlock = function(bmlLG, block, isLast){
   }
 
 	// Add to block
-  block.face.push(faceBrows);
+  if (faceBrows)
+  	block.face.push(faceBrows);
   if (isLast){
+    
 		block.faceShift = faceShiftsEnd;
     // Arrange ending
     var lastFaceBrow = block.face[block.face.length-1];

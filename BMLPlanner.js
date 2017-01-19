@@ -221,6 +221,7 @@ BMLPlanner.prototype.newBlock = function(block){
 		if (block.lg.constructor === Array)
          for (var i = 0; i <block.lg.length; i++){
            this.processSpeechBlock(block.lg[i], block, (i == block.lg.length-1));
+           this.addUtterancePause(block.lg[i]);
          }
     	// No array
     	else
@@ -240,7 +241,7 @@ BMLPlanner.prototype.abortSpeech = function(){
   if (LS.Globals.Facial){
     var facial = LS.Globals.Facial;
     if (!facial._audio.paused){
-    	facial._audio.stop(); // Then paused is true and no facial actions
+    	facial._audio.pause(); // Then paused is true and no facial actions
       // Go to neutral face? Here or somewhere else?
     }
   }
@@ -314,15 +315,18 @@ BMLPlanner.prototype.attentionToUser = function(block){
 
 
 
-
+// ---------------------------- UTTERANCE MANAGEMENT ----------------------------
 // Process language generation message
 // Adds new bml instructions according to the dialogue act and speech
 BMLPlanner.prototype.processSpeechBlock = function(bmlLG, block, isLast){
+  
   // Check if there is content
-  if (Object.keys(bmlLG).length == 0){
-  	console.error("Empty language generation");
+  if (bmlLG.start === undefined){
+    console.error("Wrong language generation format.", JSON.stringify(bmlLG));
+  	block.lg = [];
   	return;
   }
+  
   
   // Add to dialogue
   this.conversation += "KRISTINA: " + bmlLG.text + "\n";
@@ -379,6 +383,10 @@ BMLPlanner.prototype.processSpeechBlock = function(bmlLG, block, isLast){
 	}
 
 }
+
+
+
+
 
 
 // Use longest word as prosody mark
@@ -447,7 +455,7 @@ BMLPlanner.prototype.createEndFace = function(bmlLG){
 	// Generate two faceShifts
   randomTiming = 3*Math.abs(bmlLG.valence - this.defaultValence)*(0.5 + Math.random());
 	var faceValence1 = {
-		id: "toNeutral" + parseInt(Math.random*1000),
+		id: "toNeutral" + parseInt(Math.random()*1000),
     valaro: [this.defaultValence, 0], // TODO - default face is 0.25,0?
     start: faceValence0.id + ":end",
 		end: (faceValence0.id + ":end") + "+" + randomTiming // If valence is high, should take more time?
@@ -534,7 +542,11 @@ BMLPlanner.prototype.createGazeEnd = function(bmlLG){
 	var endOfSentence = bmlLG.duration;//bmlLG.textTiming[2][bmlLG.textTiming[2].length-1]; 
 
 	var end = endOfSentence - Math.random();
-	var start = end - Math.random()*1;
+	var start = end - Math.random();
+  // Fix negative timings
+  if (start < 0) start = 0;
+  if (end < 0) end = 1 + Math.random()*0.5;
+  
 	// gazeShift
 	var gazeShift = {
     id: "gazeEnd" + parseInt(Math.random()*1000),
@@ -548,7 +560,7 @@ BMLPlanner.prototype.createGazeEnd = function(bmlLG){
   this.fixSyncStart(gazeShift, bmlLG.start);
   
 	// blink
-	var startBlink = -Math.random()*0.2;
+	var startBlink = Math.random()*0.2;
 	var blink = {
     start: gazeShift.id + ":start" + "+" + startBlink,
 		end: gazeShift.id + ":start" + "+" + (startBlink + Math.random()*0.7)
@@ -557,10 +569,10 @@ BMLPlanner.prototype.createGazeEnd = function(bmlLG){
 	// headDirectionShift
 	var offsetDirections = ["DOWN", "DOWNLEFT", "DOWNRIGHT"]; // Submissive
   var randOffset = offsetDirections[Math.floor(Math.random() * offsetDirections.length)];
-	var startDir = -Math.random()*0.3;
+	var startDir = Math.random()*0.3;
 	var headDir = {
 		start: gazeShift.id + ":start" + "+" + startDir,
-		end: gazeShift.id + ":end" + "+" + (Math.random()*0.3),
+		end: gazeShift.id + ":end" + "+" + (0.5+Math.random()*0.3),
 		target: "CAMERA",
     offsetDirection: randOffset,
     offsetAngle: 2 + 5*Math.random()
@@ -573,7 +585,7 @@ BMLPlanner.prototype.createGazeEnd = function(bmlLG){
 
 
 
-
+// Change offsets of new bml instructions
 BMLPlanner.prototype.fixSyncStart = function(bml, offsetStart){
 	// Find which sync attributes exist
 	var syncAttrs = ["start"];
@@ -610,4 +622,30 @@ BMLPlanner.prototype.fixSyncStart = function(bml, offsetStart){
 			bml[syncName] = start + bml[syncName];
 		}
 	}
+}
+
+
+
+// Add a pause between speeches
+
+BMLPlanner.prototype.addUtterancePause = function(bmlLG){
+  // Pause time
+  var pauseTime = 0.2 + Math.random()*0.4;
+  
+	// Is a reference to another bml?
+	var end = parseFloat(bmlLG.end);
+	var isRef = false;
+	if (isNaN(end))
+		isRef = true;
+  
+  if (isRef){
+    // If ref already has an offset
+		var str = bmlLG.end.split("+");
+		var offset = str[1] === undefined ? 0 : parseFloat(str[1]);
+    offset += pauseTime;
+    bmlLG.end = str[0] + "+" + offset;
+  }
+  else
+    bmlLG.end += pauseTime;
+  
 }

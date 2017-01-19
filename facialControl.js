@@ -3,7 +3,7 @@
 if (!LS.Globals)
   LS.Globals = {};
 
-thatFacial = this;
+LS.Globals.Facial = this;
 
 this.headNodeName = "omarHead";
 this.jawNodeName = "jaw";
@@ -61,8 +61,8 @@ this.valAro = vec2.create();
 // Lipsync
 this._audio = new Audio();
 this._audio.addEventListener("canplaythrough", function(){
-  console.log("Audio loaded: ", this.src, ". Duration: ", this.duration, " sec.");
-  thatFacial.playSequence();
+  console.log("Audio loaded: ", this.src, ". Duration: ", this.duration, "sec.");
+  LS.Globals.Facial.playSequence();
 }, false);
 this._lipsyncBSW = [0,0,0,0,0,0];
 // Visemes parameters
@@ -119,7 +119,7 @@ this.onStart = function(){
     console.error("Eye lid index", this.eyeLidsBSIndex ," is not found in: ", morphTargets);
     return; 
   }
-  
+	
   this.eyeLidsBS = morphTargets[this.eyeLidsBSIndex];
   
   
@@ -141,10 +141,10 @@ this.onStart = function(){
   if (!this.headBone)
     console.error("Head bone node not found with name: ", this.headBoneNodeName);
   else
-    this.gazePositions["HEAD"] = this.headBone.transform.globalPosition;
+		this.gazePositions["HEAD"] = this.headBone.transform.globalPosition;
   LS.GlobalScene.getActiveCameras(true);
   if (LS.GlobalScene._cameras[0])
-    this.gazePositions["CAMERA"] = LS.GlobalScene.getCamera().getEye();
+  	this.gazePositions["CAMERA"] = LS.GlobalScene.getCamera().getEye();
   else
     console.error("Camera position not found for gaze.");
   
@@ -170,7 +170,7 @@ this.onStart = function(){
   
   
   // Initialize blendshape interpolation
-  LS.Globals.face({valaro: [0.5,0.5], start: 0, end: 0.1});
+  //LS.Globals.face({valaro: [0.5,0.5], start: 0, end: 0.05});
 }
   
   
@@ -193,15 +193,20 @@ this.onUpdate = function(dt)
   
   // Gaze
   if (this.gazeManager)
-    this.gazeManager.update(dt);
+  	this.gazeManager.update(dt);
   
   // Head behavior
   this.headBMLUpdate(dt);
 
   
-  node.scene.refresh();
+	node.scene.refresh();
 }
 
+
+this.onFinish = function(){
+  if (!this._audio.paused)
+  	this._audio.pause();
+}
 
 
 
@@ -214,8 +219,8 @@ LS.Globals.blink = function(blinkData, cmdId){
 
   blinkData.end = blinkData.end || blinkData.attackPeak * 2 || 0.5;
   
-  thatFacial.newBlink(blinkData);
-  thatFacial._blinking = true;
+  LS.Globals.Facial.newBlink(blinkData);
+  LS.Globals.Facial._blinking = true;
   
   // Server response
   if (cmdId) 
@@ -253,7 +258,7 @@ LS.Globals.face = function (faceData, cmdId){
 
   faceData.end = faceData.end || faceData.attackPeak*2 || 0.0;
 
-  thatFacial.newFA(faceData, false);
+  LS.Globals.Facial.newFA(faceData, false);
 
     // Server response
   if (cmdId) 
@@ -264,7 +269,7 @@ LS.Globals.faceShift = function (faceData, cmdId){
 
   faceData.end = faceData.end || faceData.attackPeak*2 || 0.0;
 
-  thatFacial.newFA(faceData, true);
+  LS.Globals.Facial.newFA(faceData, true);
 
     // Server response
   if (cmdId) 
@@ -273,8 +278,8 @@ LS.Globals.faceShift = function (faceData, cmdId){
 
 // Declare new facial expression
 this.newFA = function(faceData, shift){
-  if (faceData.valaro)
-    this.FA = new FacialExpr (faceData, shift, this._facialBSW);
+	if (faceData.valaro)
+  	this.FA = new FacialExpr (faceData, shift, this._facialBSW);
   else if (faceData.lexeme)
     this._FacialLexemes.push(new FacialExpr (faceData, shift, this._facialBSW));
 }
@@ -294,8 +299,8 @@ this.faceUpdate = function(dt){
   
   // Update facial lexemes
   for (var i = 0; i < this._FacialLexemes.length; i++){
-    if (this._FacialLexemes[i].transition)
-      this._FacialLexemes[i].updateLexemesBSW(this._facialBSW, dt);
+  	if (this._FacialLexemes[i].transition)
+    	this._FacialLexemes[i].updateLexemesBSW(this._facialBSW, dt);
   }
   
   // Clean facial lexemes
@@ -326,8 +331,8 @@ this.faceUpdate = function(dt){
 // --------------------- LIPSYNC ---------------------
 
 LS.Globals.lipsync = function(lipData){
-  thatFacial._visSeq.sequence = lipData.sequence;
-  thatFacial._audio.src = lipData.audioURL;
+  LS.Globals.Facial._visSeq.sequence = lipData.sequence;
+  LS.Globals.Facial._audio.src = lipData.audioURL;
   duration = lipData.duration || 4;
   
   if (lipData.cmdId) 
@@ -338,29 +343,29 @@ LS.Globals.lipsync = function(lipData){
 this.playSequence = function()
 {
   
-  if (this._audio || this._visSeq){
-    if (this._audio.paused){
-      console.log("Playing sequence", this._audio, this._visSeq);
-      this._audio.play();
-      this._visSeq.startTime = getTime();
-      this._lastInd = 0;
-    }
-  }
+	if (this._audio || this._visSeq){
+		if (this._audio.paused){
+      //console.log("Playing sequence", this._audio, this._visSeq);
+			this._audio.play();
+			this._visSeq.startTime = getTime();
+			this._lastInd = 0;
+		}
+	}
 }
 
 this.updateLipsync = function(){
   
-  var lastInd = this._lastInd;
+ 	var lastInd = this._lastInd;
   
   // Lip-Sync sequence
   if (this._audio && this._visSeq.sequence.length){ // Both files are loaded
 
-    var speech = this._audio;
-    var visSeq = this._visSeq;
+  	var speech = this._audio;
+  	var visSeq = this._visSeq;
 
     
     if (!speech.paused){ // Audio is playing
-      
+  		
       var tmstmp = (getTime() - visSeq.startTime)/1000;
       
       
@@ -401,8 +406,8 @@ this.updateLipsync = function(){
       }
       
       var ind = lastInd;
-        
-      var prev; 
+				
+      var prev;	
       var next; 
       
       
@@ -429,7 +434,7 @@ this.updateLipsync = function(){
         //if (seqWeight > 1 || seqWeight < 0 || isNaN(seqWeight)){
         if (isNaN(seqWeight)){
           console.log('Something is wrong!! -- Weight: ', seqWeight, ", Num: ", i , ",Time: ", tmstmp, ", VisSeqID: ", lastInd);
-          seqWeight = 0;
+        	seqWeight = 0;
         }
         
         this._lipsyncBSW[i] = seqWeight;
@@ -474,17 +479,17 @@ this.facialBlend = function(dt){
   }
   // Facial interpolation (high face)
   if (this.FA || this._FacialLexemes.length != 0){
-    this._blendshapes[this.browsDownBSIndex].weight = this._facialBSW[5] * this.browsDownFactor; // browsDown
-    this._blendshapes[this.browsInnerUpBSIndex].weight = this._facialBSW[6] * this.browsInnerUpFactor; // browsInnerUp
-    this._blendshapes[this.browsUpBSIndex].weight = this._facialBSW[7] * this.browsUpFactor; // browsUp
-    this._blendshapes[this.eyeLidsBSIndex].weight = this._facialBSW[8]; // eyeLids
+  	this._blendshapes[this.browsDownBSIndex].weight = this._facialBSW[5] * this.browsDownFactor; // browsDown
+  	this._blendshapes[this.browsInnerUpBSIndex].weight = this._facialBSW[6] * this.browsInnerUpFactor; // browsInnerUp
+  	this._blendshapes[this.browsUpBSIndex].weight = this._facialBSW[7] * this.browsUpFactor; // browsUp
+  	this._blendshapes[this.eyeLidsBSIndex].weight = this._facialBSW[8]; // eyeLids
   }
   
   // Eye blink
   if (this._blinking && this.eyeLidsBS){
     weight = this.Blink.update(dt, this._facialBSW[8]);
     if (weight !== undefined)
-      this._blendshapes[this.eyeLidsBSIndex].weight = weight;
+    	this._blendshapes[this.eyeLidsBSIndex].weight = weight;
     if (!this.Blink.transition)
       this._blinking = false;
   }
@@ -520,7 +525,7 @@ LS.Globals.gaze = function(gazeData, cmdId){
 
   gazeData.end = gazeData.end || 2.0;
 
-  thatFacial.newGaze(gazeData, false);
+  LS.Globals.Facial.newGaze(gazeData, false);
   
   // Server response
   if (cmdId) 
@@ -531,7 +536,7 @@ LS.Globals.gazeShift = function(gazeData, cmdId){
 
   gazeData.end = gazeData.end || 1.0;
 
-  thatFacial.newGaze(gazeData, true);
+  LS.Globals.Facial.newGaze(gazeData, true);
   
   // Server response
   if (cmdId) 
@@ -566,9 +571,9 @@ this.newGaze = function(gazeData, shift, gazePositions, headOnly){
 // amount how intense is the head nod? 0 to 1
 LS.Globals.head = function(headData, cmdId){
 
-  headData.end = headData.end || 2.0;
+	headData.end = headData.end || 2.0;
 
-  thatFacial.newHeadBML(headData);
+  LS.Globals.Facial.newHeadBML(headData);
 
   // Server response
   if (cmdId) 
@@ -603,7 +608,7 @@ LS.Globals.headDirectionShift = function(headData, cmdId){
   headData.end = headData.end || 2.0;
   
   headData.influence = "HEAD";
-  thatFacial.newGaze(headData, true, null, true);
+  LS.Globals.Facial.newGaze(headData, true, null, true);
   
   // Server response
   if (cmdId) 
@@ -617,6 +622,34 @@ LS.Globals.headDirectionShift = function(headData, cmdId){
 
 
 
+
+
+
+
+
+// --------------------- SPEECH ---------------------
+this.newSpeech = function(speechData){
+  this.callLGService(speechData.text, "test", undefined); 
+}
+
+this.callLGService = function(sentence, filename, language){
+  filename += Math.round(Math.random()*1000);
+  
+  req = new XMLHttpRequest();
+  sentence = encodeURIComponent(sentence);
+	req.open('GET', 'https://kristina.taln.upf.edu/synthesizer-service/process?sentence='+ sentence + '&name='+ filename, true);
+	//req.setRequestHeader("Content-type", "application/json;charset=UTF-8");
+	req.send();
+
+
+  req.onreadystatechange = function () { //Call a function when the state changes.
+      if (req.readyState == 4 && req.status == 200) {
+        LS.Globals.lipsync(JSON.parse(req.responseText));
+        console.log(JSON.parse(req.responseText));
+      }
+  }
+  
+}
 
 
 
@@ -1147,7 +1180,7 @@ GazeManager.prototype.newGaze = function(gazeData, shift, gazePositions, headOnl
       this.gazeActions[1] = new Gaze(gazeData, shift, this.lookAtHead, this.gazePositions);
     case "EYES":
       if (!headOnly)
-        this.gazeActions[0] = new Gaze(gazeData, shift, this.lookAtEyes, this.gazePositions);
+      	this.gazeActions[0] = new Gaze(gazeData, shift, this.lookAtEyes, this.gazePositions);
     }
   
 
@@ -1185,7 +1218,7 @@ function Gaze (gazeData, shift, lookAt, gazePositions){
 
   // Gaze positions
   if (gazePositions)
-    this.gazePositions = gazePositions;
+  	this.gazePositions = gazePositions;
 
   // Scene variables
   this.cameraEye = gazePositions["CAMERA"] || vec3.create();
@@ -1284,7 +1317,7 @@ Gaze.prototype.initGazeValues = function(){
   // Find target position (copy? for following object? if following object and offsetangle, need to recalculate all the time!)
   if (this.gazePositions)
     if (this.gazePositions[this.target])
-      vec3.copy(this.targetP, this.gazePositions[this.target]);
+  		vec3.copy(this.targetP, this.gazePositions[this.target]);
   else
     vec3.set(this.targetP, 0, 210, 70);
   
@@ -1390,12 +1423,12 @@ function HeadBML(headData, headNode, neutralRotation, lookAtRot, limVert, limHor
   this.limVert = Math.abs(limVert) || 20;
   this.limHor = Math.abs(limHor) || 30;
   
-  // Init variables
-  this.initHeadData(headData);
+	// Init variables
+	this.initHeadData(headData);
 
-  // Scene variables
-  this.headNode = headNode;
-  this.neutralRotation = neutralRotation;
+	// Scene variables
+	this.headNode = headNode;
+	this.neutralRotation = neutralRotation;
   this.lookAtRot = lookAtRot;
   
 }
@@ -1405,53 +1438,53 @@ function HeadBML(headData, headNode, neutralRotation, lookAtRot, limVert, limHor
 HeadBML.prototype.initHeadData = function(headData){
   
   // Lexeme, repetition and amount
-  this.lexeme = headData.lexeme || "NOD";
-  this.amount = headData.amount || 0.5;
+	this.lexeme = headData.lexeme || "NOD";
+	this.amount = headData.amount || 0.5;
 
-  // Maximum rotation amplitude
+	// Maximum rotation amplitude
   if (this.lexeme == "NOD")
-    this.maxDeg = this.limVert * 2;
+		this.maxDeg = this.limVert * 2;
   else
     this.maxDeg = this.limHor * 2;
 
 
 
-  // Sync start ready strokeStart stroke strokeEnd relax end
-  this.start = headData.start || 0;
-  this.end = headData.end || 2.0;
+	// Sync start ready strokeStart stroke strokeEnd relax end
+	this.start = headData.start || 0;
+	this.end = headData.end || 2.0;
 
 
-  this.ready = headData.ready || this.strokeStart || (this.stroke-this.start)/2 || this.end/4;
+	this.ready = headData.ready || this.strokeStart || (this.stroke-this.start)/2 || this.end/4;
 
-  this.strokeStart = headData.strokeStart || this.ready;
+	this.strokeStart = headData.strokeStart || this.ready;
 
-  // No repetition
-  if (!headData.repetition){
-    this.stroke = headData.stroke || (this.strokeStart + this.strokeEnd)/2 || this.end/2;
-    this.strokeEnd = headData.strokeEnd || headData.relax || (this.stroke + this.end)/2 || this.end*3/4;
-    this.relax = headData.relax || this.strokeEnd;
-  }
-  // Repetition (stroke and strokeEnd will be redefined when updating)
-  else {
-    this.strokeEnd = headData.strokeEnd || headData.relax || this.end*3/4;
-    this.relax = headData.relax || this.strokeEnd;
-    // Repetition count
-    this.repetition = headData.repetition;
-    this.repeatedIndx = 0;
-    
-    // Modify stroke and strokeEnd
-    this.strokeEnd = this.strokeStart + (this.strokeEnd - this.strokeStart)/(1 + this.repetition)
-    this.stroke = (this.strokeStart + this.strokeEnd)/2;
-  }
+	// No repetition
+	if (!headData.repetition){
+		this.stroke = headData.stroke || (this.strokeStart + this.strokeEnd)/2 || this.end/2;
+		this.strokeEnd = headData.strokeEnd || headData.relax || (this.stroke + this.end)/2 || this.end*3/4;
+		this.relax = headData.relax || this.strokeEnd;
+	}
+	// Repetition (stroke and strokeEnd will be redefined when updating)
+	else {
+		this.strokeEnd = headData.strokeEnd || headData.relax || this.end*3/4;
+		this.relax = headData.relax || this.strokeEnd;
+		// Repetition count
+		this.repetition = headData.repetition;
+		this.repeatedIndx = 0;
+		
+		// Modify stroke and strokeEnd
+		this.strokeEnd = this.strokeStart + (this.strokeEnd - this.strokeStart)/(1 + this.repetition)
+		this.stroke = (this.strokeStart + this.strokeEnd)/2;
+	}
 
 
 
-  // Start
-  this.transition = true;
-  this.phase = 0;
-  this.time = 0;
-  
-  
+	// Start
+	this.transition = true;
+	this.phase = 0;
+	this.time = 0;
+	
+	
 
 }
 
@@ -1460,19 +1493,19 @@ HeadBML.prototype.initHeadData = function(headData){
 HeadBML.prototype.update = function (dt){
 
   // Define initial values
-  if (this.time == 0)
-    this.initHeadValues();
+	if (this.time == 0)
+		this.initHeadValues();
   
-  // Time increase
-  this.time +=dt;
+	// Time increase
+	this.time +=dt;
   var headRotation = this.headNode.transform.rotation;
 
-  // Wait for to reach start time
-  if (this.time < this.start)
-    return;
+	// Wait for to reach start time
+	if (this.time < this.start)
+		return;
 
-  // Ready
-  else if (this.time < this.ready){
+	// Ready
+	else if (this.time < this.ready){
     inter = (this.time-this.start)/(this.ready-this.start);
     // Cosine interpolation
     inter = Math.cos(Math.PI*inter+Math.PI)*0.5 + 0.5;
@@ -1484,22 +1517,22 @@ HeadBML.prototype.update = function (dt){
     this.prevDeg = inter*this.readyDeg;
     // Apply rotation
     if (this.lexeme == "NOD")
-      quat.rotateX(headRotation, headRotation,  -angle*DEG2RAD); // neg is up?
+    	quat.rotateX(headRotation, headRotation,  -angle*DEG2RAD); // neg is up?
     else if (this.lexeme == "SHAKE")
       quat.rotateY(headRotation, headRotation,  -angle*DEG2RAD);
     else if (this.lexeme == "TILT")
       quat.rotateZ(headRotation, headRotation,  -angle*DEG2RAD);
   }
 
-  // StrokeStart
-  else if (this.time > this.ready && this.time < this.strokeStart)
-    return;
-  
+	// StrokeStart
+	else if (this.time > this.ready && this.time < this.strokeStart)
+		return;
+	
 
 
-  // Stroke (phase 1)
-  else if (this.time > this.strokeStart && this.time < this.stroke){
-    inter = (this.time-this.strokeStart)/(this.stroke-this.strokeStart);
+	// Stroke (phase 1)
+	else if (this.time > this.strokeStart && this.time < this.stroke){
+		inter = (this.time-this.strokeStart)/(this.stroke-this.strokeStart);
     // Cosine interpolation
     inter = Math.cos(Math.PI*inter+Math.PI)*0.5 + 0.5;
 
@@ -1513,18 +1546,18 @@ HeadBML.prototype.update = function (dt){
     this.prevDeg = inter*this.strokeDeg;
     // Apply rotation
     if (this.lexeme == "NOD")
-      quat.rotateX(headRotation, headRotation,  angle*DEG2RAD); // neg is up?
+    	quat.rotateX(headRotation, headRotation,  angle*DEG2RAD); // neg is up?
     else if (this.lexeme == "SHAKE")
       quat.rotateY(headRotation, headRotation,  angle*DEG2RAD);
     else if (this.lexeme == "TILT")
       quat.rotateZ(headRotation, headRotation,  angle*DEG2RAD);
-  }
+	}
 
 
 
-  // Stroke (phase 2)
-  else if (this.time > this.stroke && this.time < this.strokeEnd){
-    inter = (this.time-this.stroke)/(this.strokeEnd-this.stroke);
+	// Stroke (phase 2)
+	else if (this.time > this.stroke && this.time < this.strokeEnd){
+		inter = (this.time-this.stroke)/(this.strokeEnd-this.stroke);
     // Cosine interpolation
     inter = Math.cos(Math.PI*inter+Math.PI)*0.5 + 0.5;
 
@@ -1538,60 +1571,60 @@ HeadBML.prototype.update = function (dt){
     this.prevDeg = inter*this.strokeDeg;
     // Apply rotation
     if (this.lexeme == "NOD")
-      quat.rotateX(headRotation, headRotation,  -angle*DEG2RAD); // neg is up?
+    	quat.rotateX(headRotation, headRotation,  -angle*DEG2RAD); // neg is up?
     else if (this.lexeme == "SHAKE")
       quat.rotateY(headRotation, headRotation,  -angle*DEG2RAD);
     else if (this.lexeme == "TILT")
       quat.rotateZ(headRotation, headRotation,  -angle*DEG2RAD);
-  }
+	}
 
 
-  // Repetition -> Redefine strokeStart, stroke and strokeEnd
-  else if (this.time > this.strokeEnd && this.repeatedIndx != this.repetition){
-    this.repeatedIndx++;
-    var timeRep = (this.strokeEnd - this.strokeStart);
+	// Repetition -> Redefine strokeStart, stroke and strokeEnd
+	else if (this.time > this.strokeEnd && this.repeatedIndx != this.repetition){
+		this.repeatedIndx++;
+		var timeRep = (this.strokeEnd - this.strokeStart);
 
-    this.strokeStart = this.strokeEnd;
-    this.strokeEnd += timeRep;
-    this.stroke = (this.strokeEnd + this.strokeStart)/2;
+		this.strokeStart = this.strokeEnd;
+		this.strokeEnd += timeRep;
+		this.stroke = (this.strokeEnd + this.strokeStart)/2;
 
-    this.phase = 0;
-    return;
-  }
-
-
-  // StrokeEnd (no repetition)
-  else if (this.time > this.strokeEnd && this.time < this.relax)
-    return;
-  
+		this.phase = 0;
+		return;
+	}
 
 
-  // Relax -> Move towards lookAt final rotation
-  else if (this.time > this.relax && this.time < this.end){
-    inter = (this.time-this.relax)/(this.end-this.relax);
+	// StrokeEnd (no repetition)
+	else if (this.time > this.strokeEnd && this.time < this.relax)
+		return;
+	
+
+
+	// Relax -> Move towards lookAt final rotation
+	else if (this.time > this.relax && this.time < this.end){
+		inter = (this.time-this.relax)/(this.end-this.relax);
     // Cosine interpolation
     inter = Math.cos(Math.PI*inter+Math.PI)*0.5 + 0.5;
 
     quat.slerp(headRotation, headRotation, this.lookAtRot, inter*0.1); // Why 0.1?
     
-      // Should store previous rotation applied, so it is not additive
-      //if (this.phase == 2){
-      //  this.prevDeg = 0;
-      //  this.phase = 3;
-      //}
+	    // Should store previous rotation applied, so it is not additive
+	    //if (this.phase == 2){
+	    //	this.prevDeg = 0;
+	    //	this.phase = 3;
+	    //}
 
-      //var angle = inter*this.readyDeg - this.prevDeg;
-      //this.prevDeg = inter*this.readyDeg;
-      // Apply rotation
-      //quat.rotateX(this.headNode.transform.rotation, this.headNode.transform.rotation,  angle*DEG2RAD); // neg is up?
-  
+	    //var angle = inter*this.readyDeg - this.prevDeg;
+	    //this.prevDeg = inter*this.readyDeg;
+	    // Apply rotation
+	    //quat.rotateX(this.headNode.transform.rotation, this.headNode.transform.rotation,  angle*DEG2RAD); // neg is up?
+	
   }
 
   // End
   else if (this.time > this.end)
     this.transition = false;
-  
-  
+	
+	
   // Progressive lookAt effect
   inter = (this.time-this.start)/(this.end-this.start);
   // Cosine interpolation
@@ -1605,27 +1638,27 @@ HeadBML.prototype.update = function (dt){
 
 
 HeadBML.prototype.initHeadValues = function(){
-  
-  // Head initial rotation
-  this.inQ = quat.copy(quat.create(), this.headNode.transform.rotation);
+	
+	// Head initial rotation
+	this.inQ = quat.copy(quat.create(), this.headNode.transform.rotation);
 
-  // Compare rotations to know which side to rotate
-  // Amount of rotation
-  var neutralInv = quat.invert(quat.create(), this.neutralRotation);
-  var rotAmount = quat.mul(quat.create(), neutralInv, this.inQ);
-  var eulerRot = quat.toEuler(vec3.create(), rotAmount);
-  // X -> right(neg) left(pos)
-  // Z -> up(neg) down(pos)
+	// Compare rotations to know which side to rotate
+	// Amount of rotation
+	var neutralInv = quat.invert(quat.create(), this.neutralRotation);
+	var rotAmount = quat.mul(quat.create(), neutralInv, this.inQ);
+	var eulerRot = quat.toEuler(vec3.create(), rotAmount);
+	// X -> right(neg) left(pos)
+	// Z -> up(neg) down(pos)
 
-  // in here we choose which side to rotate and how much according to limits
-  // the lookAt component should be stopped here (or set to not modify node, only final lookAt quat output)
+	// in here we choose which side to rotate and how much according to limits
+	// the lookAt component should be stopped here (or set to not modify node, only final lookAt quat output)
 
-  // NOD
+	// NOD
   if (this.lexeme == "NOD"){
     // nod will always be downwards
 
     // a final quaternion slerping between initial rotation and final rotation (with lookAt)
-    // apply directly to the slerp lookAt. limits will be passed, but it doesn't make sense that the head looks downward when making a nod? Maybe add hard limits? or something similar?
+		// apply directly to the slerp lookAt. limits will be passed, but it doesn't make sense that the head looks downward when making a nod? Maybe add hard limits? or something similar?
   
     // get ready/strokeStart position
     this.strokeDeg = this.amount * this.maxDeg;

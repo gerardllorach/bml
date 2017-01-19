@@ -276,3 +276,4 @@ LookAt.prototype.updateOrientation = function(e)
 
 
 LS.registerComponent( LookAt );
+

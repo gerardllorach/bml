@@ -3,7 +3,7 @@
 if (!LS.Globals)
   LS.Globals = {};
 
-LS.Globals.showGUI = true;
+//LS.Globals.showGUI = true;
 
 this.onStart = function(){
 

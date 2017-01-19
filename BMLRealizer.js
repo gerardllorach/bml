@@ -496,7 +496,7 @@ GazeManager.prototype.newGaze = function(gazeData, shift, gazePositions, headOnl
       this.gazeActions[1] = new Gaze(gazeData, shift, this.lookAtHead, this.gazePositions);
     case "EYES":
       if (!headOnly)
-        this.gazeActions[0] = new Gaze(gazeData, shift, this.lookAtEyes, this.gazePositions);
+      	this.gazeActions[0] = new Gaze(gazeData, shift, this.lookAtEyes, this.gazePositions);
     }
   
 
@@ -534,7 +534,7 @@ function Gaze (gazeData, shift, lookAt, gazePositions){
 
   // Gaze positions
   if (gazePositions)
-    this.gazePositions = gazePositions;
+  	this.gazePositions = gazePositions;
 
   // Scene variables
   this.cameraEye = gazePositions["CAMERA"] || vec3.create();
@@ -631,10 +631,10 @@ Gaze.prototype.update = function(dt){
   // End
   if (this.time > this.end){
     if(!this.dynamic)
-      this.transition = false;
+    	this.transition = false;
     // Extension - Dynamic
     else{
-      vec3.copy(this.lookAt.transform.position, this.EndP); 
+    	vec3.copy(this.lookAt.transform.position, this.EndP); 
     }
   }
     
@@ -650,8 +650,8 @@ Gaze.prototype.initGazeValues = function(){
   // Find target position (copy? for following object? if following object and offsetangle, need to recalculate all the time!)
   if (this.gazePositions)
     if (this.gazePositions[this.target])
-      vec3.copy(this.targetP, this.gazePositions[this.target]);
-    else
+  		vec3.copy(this.targetP, this.gazePositions[this.target]);
+  	else
       vec3.set(this.targetP, 0, 210, 70);
   else
     vec3.set(this.targetP, 0, 210, 70);
@@ -759,12 +759,12 @@ function HeadBML(headData, headNode, neutralRotation, lookAtRot, limVert, limHor
   this.limVert = Math.abs(limVert) || 20;
   this.limHor = Math.abs(limHor) || 30;
   
-  // Init variables
-  this.initHeadData(headData);
+	// Init variables
+	this.initHeadData(headData);
 
-  // Scene variables
-  this.headNode = headNode;
-  this.neutralRotation = neutralRotation;
+	// Scene variables
+	this.headNode = headNode;
+	this.neutralRotation = neutralRotation;
   this.lookAtRot = lookAtRot;
   
 }
@@ -774,53 +774,53 @@ function HeadBML(headData, headNode, neutralRotation, lookAtRot, limVert, limHor
 HeadBML.prototype.initHeadData = function(headData){
   
   // Lexeme, repetition and amount
-  this.lexeme = headData.lexeme || "NOD";
-  this.amount = headData.amount || 0.5;
+	this.lexeme = headData.lexeme || "NOD";
+	this.amount = headData.amount || 0.5;
 
-  // Maximum rotation amplitude
+	// Maximum rotation amplitude
   if (this.lexeme == "NOD")
-    this.maxDeg = this.limVert * 2;
+		this.maxDeg = this.limVert * 2;
   else
     this.maxDeg = this.limHor * 2;
 
 
 
-  // Sync start ready strokeStart stroke strokeEnd relax end
-  this.start = headData.start || 0;
-  this.end = headData.end || 2.0;
+	// Sync start ready strokeStart stroke strokeEnd relax end
+	this.start = headData.start || 0;
+	this.end = headData.end || 2.0;
 
 
-  this.ready = headData.ready || this.strokeStart || (this.stroke-this.start)/2 || this.end/4;
+	this.ready = headData.ready || this.strokeStart || (this.stroke-this.start)/2 || this.end/4;
 
-  this.strokeStart = headData.strokeStart || this.ready;
+	this.strokeStart = headData.strokeStart || this.ready;
 
-  // No repetition
-  if (!headData.repetition){
-    this.stroke = headData.stroke || (this.strokeStart + this.strokeEnd)/2 || this.end/2;
-    this.strokeEnd = headData.strokeEnd || headData.relax || (this.stroke + this.end)/2 || this.end*3/4;
-    this.relax = headData.relax || this.strokeEnd;
-  }
-  // Repetition (stroke and strokeEnd will be redefined when updating)
-  else {
-    this.strokeEnd = headData.strokeEnd || headData.relax || this.end*3/4;
-    this.relax = headData.relax || this.strokeEnd;
-    // Repetition count
-    this.repetition = headData.repetition;
-    this.repeatedIndx = 0;
-    
-    // Modify stroke and strokeEnd
-    this.strokeEnd = this.strokeStart + (this.strokeEnd - this.strokeStart)/(1 + this.repetition)
-    this.stroke = (this.strokeStart + this.strokeEnd)/2;
-  }
+	// No repetition
+	if (!headData.repetition){
+		this.stroke = headData.stroke || (this.strokeStart + this.strokeEnd)/2 || this.end/2;
+		this.strokeEnd = headData.strokeEnd || headData.relax || (this.stroke + this.end)/2 || this.end*3/4;
+		this.relax = headData.relax || this.strokeEnd;
+	}
+	// Repetition (stroke and strokeEnd will be redefined when updating)
+	else {
+		this.strokeEnd = headData.strokeEnd || headData.relax || this.end*3/4;
+		this.relax = headData.relax || this.strokeEnd;
+		// Repetition count
+		this.repetition = headData.repetition;
+		this.repeatedIndx = 0;
+		
+		// Modify stroke and strokeEnd
+		this.strokeEnd = this.strokeStart + (this.strokeEnd - this.strokeStart)/(1 + this.repetition)
+		this.stroke = (this.strokeStart + this.strokeEnd)/2;
+	}
 
 
 
-  // Start
-  this.transition = true;
-  this.phase = 0;
-  this.time = 0;
-  
-  
+	// Start
+	this.transition = true;
+	this.phase = 0;
+	this.time = 0;
+	
+	
 
 }
 
@@ -829,19 +829,19 @@ HeadBML.prototype.initHeadData = function(headData){
 HeadBML.prototype.update = function (dt){
   this.headNode.transform.mustUpdate = true;
   // Define initial values
-  if (this.time == 0)
-    this.initHeadValues();
+	if (this.time == 0)
+		this.initHeadValues();
   
-  // Time increase
-  this.time +=dt;
+	// Time increase
+	this.time +=dt;
   var headRotation = this.headNode.transform.rotation;
 
-  // Wait for to reach start time
-  if (this.time < this.start)
-    return;
+	// Wait for to reach start time
+	if (this.time < this.start)
+		return;
 
-  // Ready
-  else if (this.time < this.ready){
+	// Ready
+	else if (this.time < this.ready){
     inter = (this.time-this.start)/(this.ready-this.start);
     // Cosine interpolation
     inter = Math.cos(Math.PI*inter+Math.PI)*0.5 + 0.5;
@@ -853,22 +853,22 @@ HeadBML.prototype.update = function (dt){
     this.prevDeg = inter*this.readyDeg;
     // Apply rotation
     if (this.lexeme == "NOD")
-      quat.rotateX(headRotation, headRotation,  -angle*DEG2RAD); // neg is up?
+    	quat.rotateX(headRotation, headRotation,  -angle*DEG2RAD); // neg is up?
     else if (this.lexeme == "SHAKE")
       quat.rotateY(headRotation, headRotation,  -angle*DEG2RAD);
     else if (this.lexeme == "TILT")
       quat.rotateZ(headRotation, headRotation,  -angle*DEG2RAD);
   }
 
-  // StrokeStart
-  else if (this.time > this.ready && this.time < this.strokeStart)
-    return;
-  
+	// StrokeStart
+	else if (this.time > this.ready && this.time < this.strokeStart)
+		return;
+	
 
 
-  // Stroke (phase 1)
-  else if (this.time > this.strokeStart && this.time < this.stroke){
-    inter = (this.time-this.strokeStart)/(this.stroke-this.strokeStart);
+	// Stroke (phase 1)
+	else if (this.time > this.strokeStart && this.time < this.stroke){
+		inter = (this.time-this.strokeStart)/(this.stroke-this.strokeStart);
     // Cosine interpolation
     inter = Math.cos(Math.PI*inter+Math.PI)*0.5 + 0.5;
 
@@ -882,18 +882,18 @@ HeadBML.prototype.update = function (dt){
     this.prevDeg = inter*this.strokeDeg;
     // Apply rotation
     if (this.lexeme == "NOD")
-      quat.rotateX(headRotation, headRotation,  angle*DEG2RAD); // neg is up?
+    	quat.rotateX(headRotation, headRotation,  angle*DEG2RAD); // neg is up?
     else if (this.lexeme == "SHAKE")
       quat.rotateY(headRotation, headRotation,  angle*DEG2RAD);
     else if (this.lexeme == "TILT")
       quat.rotateZ(headRotation, headRotation,  angle*DEG2RAD);
-  }
+	}
 
 
 
-  // Stroke (phase 2)
-  else if (this.time > this.stroke && this.time < this.strokeEnd){
-    inter = (this.time-this.stroke)/(this.strokeEnd-this.stroke);
+	// Stroke (phase 2)
+	else if (this.time > this.stroke && this.time < this.strokeEnd){
+		inter = (this.time-this.stroke)/(this.strokeEnd-this.stroke);
     // Cosine interpolation
     inter = Math.cos(Math.PI*inter+Math.PI)*0.5 + 0.5;
 
@@ -907,60 +907,60 @@ HeadBML.prototype.update = function (dt){
     this.prevDeg = inter*this.strokeDeg;
     // Apply rotation
     if (this.lexeme == "NOD")
-      quat.rotateX(headRotation, headRotation,  -angle*DEG2RAD); // neg is up?
+    	quat.rotateX(headRotation, headRotation,  -angle*DEG2RAD); // neg is up?
     else if (this.lexeme == "SHAKE")
       quat.rotateY(headRotation, headRotation,  -angle*DEG2RAD);
     else if (this.lexeme == "TILT")
       quat.rotateZ(headRotation, headRotation,  -angle*DEG2RAD);
-  }
+	}
 
 
-  // Repetition -> Redefine strokeStart, stroke and strokeEnd
-  else if (this.time > this.strokeEnd && this.repeatedIndx != this.repetition){
-    this.repeatedIndx++;
-    var timeRep = (this.strokeEnd - this.strokeStart);
+	// Repetition -> Redefine strokeStart, stroke and strokeEnd
+	else if (this.time > this.strokeEnd && this.repeatedIndx != this.repetition){
+		this.repeatedIndx++;
+		var timeRep = (this.strokeEnd - this.strokeStart);
 
-    this.strokeStart = this.strokeEnd;
-    this.strokeEnd += timeRep;
-    this.stroke = (this.strokeEnd + this.strokeStart)/2;
+		this.strokeStart = this.strokeEnd;
+		this.strokeEnd += timeRep;
+		this.stroke = (this.strokeEnd + this.strokeStart)/2;
 
-    this.phase = 0;
-    return;
-  }
-
-
-  // StrokeEnd (no repetition)
-  else if (this.time > this.strokeEnd && this.time < this.relax)
-    return;
-  
+		this.phase = 0;
+		return;
+	}
 
 
-  // Relax -> Move towards lookAt final rotation
-  else if (this.time > this.relax && this.time < this.end){
-    inter = (this.time-this.relax)/(this.end-this.relax);
+	// StrokeEnd (no repetition)
+	else if (this.time > this.strokeEnd && this.time < this.relax)
+		return;
+	
+
+
+	// Relax -> Move towards lookAt final rotation
+	else if (this.time > this.relax && this.time < this.end){
+		inter = (this.time-this.relax)/(this.end-this.relax);
     // Cosine interpolation
     inter = Math.cos(Math.PI*inter+Math.PI)*0.5 + 0.5;
 
     quat.slerp(headRotation, headRotation, this.lookAtRot, inter*0.1); // Why 0.1?
     /*
-      // Should store previous rotation applied, so it is not additive
-      if (this.phase == 2){
-        this.prevDeg = 0;
-        this.phase = 3;
-      }
+	    // Should store previous rotation applied, so it is not additive
+	    if (this.phase == 2){
+	    	this.prevDeg = 0;
+	    	this.phase = 3;
+	    }
 
-      var angle = inter*this.readyDeg - this.prevDeg;
-      this.prevDeg = inter*this.readyDeg;
-      // Apply rotation
-      quat.rotateX(this.headNode.transform.rotation, this.headNode.transform.rotation,  angle*DEG2RAD); // neg is up?
-  */
+	    var angle = inter*this.readyDeg - this.prevDeg;
+	    this.prevDeg = inter*this.readyDeg;
+	    // Apply rotation
+	    quat.rotateX(this.headNode.transform.rotation, this.headNode.transform.rotation,  angle*DEG2RAD); // neg is up?
+	*/
   }
 
   // End
   else if (this.time > this.end)
     this.transition = false;
-  
-  
+	
+	
   // Progressive lookAt effect
   inter = (this.time-this.start)/(this.end-this.start);
   // Cosine interpolation
@@ -974,33 +974,33 @@ HeadBML.prototype.update = function (dt){
 
 
 HeadBML.prototype.initHeadValues = function(){
-  
-  // Head initial rotation
-  this.inQ = quat.copy(quat.create(), this.headNode.transform.rotation);
+	
+	// Head initial rotation
+	this.inQ = quat.copy(quat.create(), this.headNode.transform.rotation);
 
-  // Compare rotations to know which side to rotate
-  // Amount of rotation
-  var neutralInv = quat.invert(quat.create(), this.neutralRotation);
-  var rotAmount = quat.mul(quat.create(), neutralInv, this.inQ);
-  var eulerRot = quat.toEuler(vec3.create(), rotAmount);
-  // X -> right(neg) left(pos)
-  // Z -> up(neg) down(pos)
+	// Compare rotations to know which side to rotate
+	// Amount of rotation
+	var neutralInv = quat.invert(quat.create(), this.neutralRotation);
+	var rotAmount = quat.mul(quat.create(), neutralInv, this.inQ);
+	var eulerRot = quat.toEuler(vec3.create(), rotAmount);
+	// X -> right(neg) left(pos)
+	// Z -> up(neg) down(pos)
 
-  // in here we choose which side to rotate and how much according to limits
-  // the lookAt component should be stopped here (or set to not modify node, only final lookAt quat output)
+	// in here we choose which side to rotate and how much according to limits
+	// the lookAt component should be stopped here (or set to not modify node, only final lookAt quat output)
 
-  // NOD
+	// NOD
   if (this.lexeme == "NOD"){
     // nod will always be downwards
 
     // a final quaternion slerping between initial rotation and final rotation (with lookAt)
-    // apply directly to the slerp lookAt. limits will be passed, but it doesn't make sense that the head looks downward when making a nod? Maybe add hard limits? or something similar?
+		// apply directly to the slerp lookAt. limits will be passed, but it doesn't make sense that the head looks downward when making a nod? Maybe add hard limits? or something similar?
   
     // get ready/strokeStart position
     this.strokeDeg = this.amount * this.maxDeg;
     // Define rot init
     //this.readyDeg = Math.abs(Math.log10(this.amount*10)) * this.maxDeg * 0.2; // 20% of rotation approx
-    this.readyDeg = this.strokeDeg * 0.2;
+		this.readyDeg = this.strokeDeg * 0.2;
     
     // If the stroke rotation passes the limit, change readyDeg
     if (eulerRot[2]*RAD2DEG + this.strokeDeg > this.limVert)
@@ -1027,3 +1027,61 @@ HeadBML.prototype.initHeadValues = function(){
 
   
 }
+
+
+
+
+
+
+
+// --------------------- SPEECH ---------------------
+// BML
+// <speech text>
+// Not supported: SSML tags, sync, start, end
+
+// The SpeechSynthesisUtternace should be in the agent and passed here. Events will be managed
+// in the agent side, not here.
+// Could there be an end time approximation?
+
+// Constructor
+function Speech(lang, voice){
+  this.utterance = new SpeechSynthesisUtterance("");
+  this.utterance.lang = lang || 'en-US';
+  
+  if (voice)
+  	this.utterance.voice = speechSynthesis.getVoices().filter(function(v) {return v.name == voice;})[0];
+}
+
+// Get available voices
+Speech.prototype.getVoices = function(){
+  var voicesNames = [];
+  var vv = speechSynthesis.getVoices();
+  for (var i = 0; i<vv.length; i++){
+    voicesNames[i] = vv[i].name;
+  }
+  return voicesNames;
+}
+// Set voice
+Speech.prototype.setVoice = function(voiceName){
+  this.utterance.voice = speechSynthesis.getVoices().filter(function(v) {return v.name == voiceName;})[0];
+}
+
+
+// Speak - TTS
+Speech.prototype.speak = function (text){
+  this.utterance.text = text;
+  speechSynthesis.speak(this.utterance);
+}
+
+
+
+
+
+
+
+// --------------------- GESTURE ---------------------
+// BML
+// <gesture start ready strokeStart stroke strokeEnd relax end mode lexeme>
+// mode [LEFT_HAND, RIGHT_HAND, BOTH_HANDS]
+// lexeme [BEAT]
+

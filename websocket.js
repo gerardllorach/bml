@@ -79,11 +79,11 @@ this.connectWS = function(){
   
   // onmessage
   this.ws.onmessage = function(e){
-    console.log("Received message: ", e.data);
+    //console.log("Received message: ", e.data);
     
     // Process message
     if (LS.Globals.processMsg)
-      LS.Globals.processMsg(e.data);
+      LS.Globals.processMsg(e.data, true);
   }
   
   // onerror

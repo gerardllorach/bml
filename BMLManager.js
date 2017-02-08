@@ -110,16 +110,16 @@ BMLTimeManager.prototype.update = function(actionCallback, time){
 
 BMLTimeManager.prototype.newBlock = function(block, time){
 //console.log("NEW BLOCK\n", JSON.stringify(block));
+  if (!block){
+  	return;
+	}
+  
 	// Time now
 	//var d = new Date();
 	this.time = time || LS.GlobalScene.time;// ||d.getSeconds() + 0.001*d.getMilliseconds();
 
   // TODO: require
   
-  if (!block){
-    console.error("An undefined block has been received in BMLManager newBlock().", block);
-  	return;
-	}
 	// Fix and Sychronize (set missing timings) (should substitute "start:gaze1:end + 1.1" by a number)
 	this.fixBlock(block);
 	// TODO: constraint (synchronize, after, before) and wait
@@ -133,12 +133,14 @@ BMLTimeManager.prototype.newBlock = function(block, time){
     }
     return;
   }
+  
   // Add to stack
 	this.addToStack(block);
 	// Check timing errors
 	this.check();
   //console.log("FIXED BLOCK.", JSON.stringify(block), block);
   //console.log(this.BMLStacks);
+  
 
 }
 
@@ -185,7 +187,7 @@ BMLTimeManager.prototype.fixBlock = function(block){
 
 	// Find end of block
 	block.end = this.findEndOfBlock(block);
-
+  
 }
 
 
@@ -249,8 +251,8 @@ BMLTimeManager.prototype.fixBML = function(bml, key, block, sync){
 BMLTimeManager.prototype.checkSync = function(syncAttr, block, it){
 	
 	// Check if undefined
-	if (syncAttr === undefined){
-		//console.log("Sync attr undefined.", syncAttr, block, it);
+  if (syncAttr === undefined || syncAttr !== syncAttr){
+		console.warn("Sync attr undefined or NaN.", syncAttr, it);
 		return undefined;
 	}
 
@@ -419,7 +421,7 @@ BMLTimeManager.prototype.addToStack = function(block){
 	}
   
   
-	// MERGE
+	// MERGE (default)
 	else {
 		// No actions in the stack
 		if (this.stack.length == 0){
@@ -560,7 +562,7 @@ BMLTimeManager.prototype.mergeBML = function(bml, stack, globalStart, overwrite)
 		if (stack.length > 1){
 			for (var i = 0; i<stack.length-1; i++){
         // Does it fit?
-				if (bml.startGlobalTime >= stack[i].endGlobalTime && bml.endGlobalTime <= stack[i+1].startGlobalTime){
+				if (bml.startGlobalTime >= stack[i].endGlobalTime && bml.endGlobalTime <= stack[i+1].startGlobalTime || i == 0 && bml.endGlobalTime < stack[i].startGlobalTime){
           if (!merged){
             tmp = stack.splice(i, stack.length);
             stack.push(bml);
@@ -576,15 +578,19 @@ BMLTimeManager.prototype.mergeBML = function(bml, stack, globalStart, overwrite)
         }
 			}
 		}
-		// End of stack
-		if (!merged || overwrite){
+		// End of stack (stack.length == 1)
+		if (!merged || overwrite){// End of stack
 			if (stack[stack.length-1].endGlobalTime <= bml.startGlobalTime){
         if (!merged){
           stack.push(bml);
           merged = true;
         }
-			} else if (overwrite)
+			} else if (overwrite) 
         stack.splice(stack.length-1, 1);
+      else if (bml.endGlobalTime < stack[0].startGlobalTime){// Start of stack
+        stack.push(bml);
+        stack.reverse();
+      }
 		}
 	}
   // After removing conflicting bml, add
@@ -669,7 +675,8 @@ BMLTimeManager.prototype.findEndOfBlock = function(block){
       //console.error("Empty bml instruction.", keys[i], block);
     else if (bml.end !== undefined)
 			latestEnd = Math.max(bml.end, latestEnd);
-    else if (bml.constructor === Array) // several instructions inside class
+    if (bml.constructor === Array) // several instructions inside class
+      
       for (var j = 0; j < bml.length; j++){
         if (bml[j].end !== undefined)
 					latestEnd = Math.max(bml[j].end, latestEnd);
@@ -700,7 +707,7 @@ BMLTimeManager.prototype.processIntoBMLStack = function(bml, stack, globalStart,
 	// First, we check if the block fits between other blocks, thus all bml instructions
 	// should fit in the stack.
   if (!merged)
-    console.error("Could not add to " + bml.key + " stack. \n");// + "BML: ", 
+    console.warn("Could not add to " + bml.key + " stack. \n");// + "BML: ", 
                   //JSON.stringify(bml), "\nSTACK: ", 
                   //JSON.stringify(stack));
  

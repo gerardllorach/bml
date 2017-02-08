@@ -153,8 +153,12 @@ this.onStart = function(){
   this.lookAtHead = node.scene.getNodeByName (this.lookAtHeadName);
   this.lookAtNeck = node.scene.getNodeByName (this.lookAtNeckName);
   if (!this.lookAtEyes) console.error("LookAt Eyes not found with name: ", this.lookAtEyesName);
+  else this.gazePositions["EYESTARGET"] = this.lookAtEyes.transform.position;
   if (!this.lookAtHead) console.error("LookAt Head not found with name: ", this.lookAtHeadName);
+  else this.gazePositions["HEADARGET"] = this.lookAtHead.transform.position;
   if (!this.lookAtNeck) console.error("LookAt Neck not found with name: ", this.lookAtNeckName);
+  else this.gazePositions["NECKTARGET"] = this.lookAtNeck.transform.position;
+
   
   // Gaze manager
   this.gazeManager = new GazeManager(this.lookAtNeck, this.lookAtHead, this.lookAtEyes, this.gazePositions);
@@ -278,6 +282,16 @@ LS.Globals.faceShift = function (faceData, cmdId){
 
 // Declare new facial expression
 this.newFA = function(faceData, shift){
+  // Use BSW of the agent
+  this._facialBSW[0] = this._blendshapes[this.sadBSIndex].weight / this.sadFactor; // sad
+  this._facialBSW[1] = this._blendshapes[this.smileBSIndex].weight / this.smileFactor; // smile
+  this._facialBSW[2] = this._blendshapes[this.lipsClosedBSIndex].weight / this.lipsClosedFactor; // lipsClosed
+  this._facialBSW[3] = this._blendshapes[this.kissBSIndex].weight / this.kissFactor; // kiss
+  this._facialBSW[5] = this._blendshapes[this.browsDownBSIndex].weight / this.browsDownFactor; // browsDown
+  this._facialBSW[6] = this._blendshapes[this.browsInnerUpBSIndex].weight / this.browsInnerUpFactor; // browsInnerUp
+  this._facialBSW[7] = this._blendshapes[this.browsUpBSIndex].weight / this.browsUpFactor; // browsUp
+  //this._facialBSW[8] = this._blendshapes[this.eyeLidsBSIndex].weight; // eyeLids
+
 	if (faceData.valaro)
   	this.FA = new FacialExpr (faceData, shift, this._facialBSW);
   else if (faceData.lexeme)

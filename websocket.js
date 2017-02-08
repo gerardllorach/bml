@@ -13,6 +13,7 @@ LS.infoText = "";
   
 this.hostname = "webglstudio.org";
 this.port = 8080;
+this.characterName = "KRISTINA";
 
 
 
@@ -74,7 +75,7 @@ this.connectWS = function(){
     
     console.log("Connected to "+ hostString);
     LS.infoText = "Connected to "+ hostString;
-    this.send("KRISTINA");
+    this.send(that.characterName);
   }
   
   // onmessage

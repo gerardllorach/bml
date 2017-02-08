@@ -5,7 +5,6 @@ if (!LS.Globals)
   
 
 
-
 this.onStart = function(){
   
   if (window.BMLPlanner !== undefined)
@@ -108,6 +107,7 @@ LS.Globals.processMsg = function(msg, fromWS){
   	msg.fromWS = fromWS;
   console.log("Processing message: ", msg);
   
+
   // Input msg KRISTINA
   LS.Globals.inputMSG = msg;
   // This is here for the KRISTINA Web GUI
@@ -136,11 +136,13 @@ LS.Globals.processMsg = function(msg, fromWS){
     }
   }
   
+  
+  
   if (!msg){
     console.error("An undefined msg has been received.", msg);
     return;
   }
-
+	
   // Process block
   // Create new bml if necessary
   if (LS.Globals.BMLPlanner)
@@ -203,6 +205,7 @@ LS.Globals.processBML = function(key, bml){
       thatFacial.newSpeech(bml);
       break;
     case "gesture":
+      LS.Globals.gesture(bml);
       break;
     case "pointing":
       break;

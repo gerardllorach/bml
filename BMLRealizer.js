@@ -130,8 +130,8 @@ FacialExpr.prototype.PRESS_LIPS = 3; // lips pressed
 FacialExpr.prototype.OPEN_MOUTH = 4; // jaw
 
 FacialExpr.prototype.LOWER_BROWS = 5; // brows down
-FacialExpr.prototype.OBLIQUE_BROWS = 7; // brows rotate outwards
-FacialExpr.prototype.RAISE_BROWS = 6; // brows up
+FacialExpr.prototype.OBLIQUE_BROWS = 6; // brows rotate outwards
+FacialExpr.prototype.RAISE_BROWS = 7; // brows up
 FacialExpr.prototype.WIDEN_EYES = 8; // negative eyelids closed
 FacialExpr.prototype.CLOSE_EYES = 8; // eyelids closed
 

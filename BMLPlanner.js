@@ -1,9 +1,6 @@
 //@BMLPlanner
 
-// Or could be also called Gesture Generation.
-
-// TODO: change automatically to WAITING when SPEAKING finishes.
-// TODO: automatic blink, saccades, breathing, head and body movement.
+// TODO: separate NVG of bml planner (processSpeechBlock).
 
 
 var BMLPlanner = function(){
@@ -13,9 +10,18 @@ var BMLPlanner = function(){
   this.stateTime = 0;
   this.nextBlockIn =  1 + Math.random() * 2;
   
-  // Default state
+  // Default facial state
   this.defaultValence = 0.4;
   this.currentArousal = 0;
+  
+  // Idle timings (blink and saccades)
+  this.blinkIdle = 0.5 + Math.random()*6;
+	this.blinkDur = Math.random()*0.5 + 0.15;
+	this.blinkCountdown = 0;
+
+	this.saccIdle = 0.5 + Math.random()*6;
+	this.saccDur = Math.random() + 0.5;
+	this.saccCountdown = 0;
 }
 
 BMLPlanner.prototype.update = function(dt){
@@ -27,8 +33,17 @@ BMLPlanner.prototype.update = function(dt){
     return this.createBlock();
   }
   
+  // Check if speech has finished to change to WAITING
+  if (this.state == "SPEAKING"){
+    if (LS.Globals.BMLManager){
+      if (LS.Globals.BMLManager.lgStack.length == 0)
+        this.transition({control: "WAITING"});
+    }
+  }
+  
   // Automatic blink and saccades
-  return null;//this.updateBlinksAndSaccades();
+  return this.updateBlinksAndSaccades(dt);
+  
 }
 
 BMLPlanner.prototype.transition = function(block){
@@ -48,7 +63,7 @@ BMLPlanner.prototype.transition = function(block){
   // Waiting can only come after speaking
   if (nextState == "WAITING"){
     // Look at user for a while, then start gazing around
-    this.nextBlockIn = 2 + Math.random() * 3;
+    this.nextBlockIn = 2 + Math.random() * 4;
   }
   // Can start speaking at any moment
   else if (nextState == "LISTENING"){
@@ -59,7 +74,7 @@ BMLPlanner.prototype.transition = function(block){
       this.abortSpeech();
     } 
     // Look at user and default face
-    this.attentionToUser(block);
+    this.attentionToUser(block, true);
     // Back-channelling
     this.nextBlockIn = 1 +  Math.random()*2;
 
@@ -70,8 +85,9 @@ BMLPlanner.prototype.transition = function(block){
   }
   // Speaking always after processing
   else if (nextState == "SPEAKING"){
-    // Already done in newBlock() if language-generation present
-    this.nextBlockIn = 100;
+    this.attentionToUser(block, true);
+    // Should I create random gestures during speech?
+    this.nextBlockIn = 2 + Math.random()*4;
   }
   
   this.state = nextState;
@@ -88,7 +104,7 @@ BMLPlanner.prototype.createBlock = function(){
   if (state == "LISTENING"){
     this.nextBlockIn = 1.5 + Math.random()*3;
     // head -> link with this.currentArousal
-    if (Math.random() * 0.6)
+    if (Math.random() < 0.6)
     block.head = {
       start: 0,
       end: 1.5 + Math.random()*2,
@@ -115,7 +131,61 @@ BMLPlanner.prototype.createBlock = function(){
     // Gaze should already be towards user
     
     return block;
-  } 
+  }
+  // SPEAKING
+  else if (state == "SPEAKING"){
+    this.nextBlockIn = 2 + Math.random()*4;
+    // Head
+    if (Math.random() < 0.6){
+      block.head = {
+        start: 0,
+        end: 2.5 + Math.random()*1.5,
+        lexeme: "NOD",
+        amount: 0.05 + Math.random()*0.05
+      }
+      // Deviate head slightly
+      if (Math.random() < 0.85){
+        var offsetDirections = ["DOWNRIGHT", "DOWNLEFT", "LEFT", "RIGHT"]; // Upper and sides
+  			var randOffset = offsetDirections[Math.floor(Math.random() * offsetDirections.length)];
+        block.headDirectionShift = {
+          start: 0,
+          end: 1 + Math.random(),
+          target: "CAMERA",
+          offsetDirection: randOffset,
+          offsetAngle: 1 + Math.random()*3
+        }
+      }
+    }
+    // Esporadic raising eyebrows
+    if (Math.random() < 0.7){
+      var start = Math.random();
+      var end = start + 1.2 + Math.random()*0.5;
+      block.face = {
+        start: start,
+        attackPeak: start + (end-start)*0.2,
+        relax: start + (end-start)*0.5,
+        end: end,
+        lexeme: {lexeme: "RAISE_BROWS", amount: 0.1 + Math.random()*0.2}
+      }
+    }
+    // Redirect gaze to user
+    if (Math.random() < 0.7){
+      var start = Math.random();
+      var end = start + 0.5 + Math.random()*1;
+      block.gazeShift = {
+        start: start,
+        end: end,
+        influence: "EYES",
+        target: "CAMERA"
+      }
+      block.composition = "OVERWRITE";
+    }
+    
+    
+    return block;
+  }
+  
+  
   // PROCESSING
   else if (state == "PROCESSING"){
   	this.nextBlockIn = 2 + Math.random() * 2;
@@ -177,15 +247,15 @@ BMLPlanner.prototype.createBlock = function(){
   	var randOffset = offsetDirections[Math.floor(Math.random() * offsetDirections.length)];
     block.gazeShift = {
       start: 0,
-      end: 1 + Math.random()*3,
+      end: 1 + Math.random(),
       target: "CAMERA",
       influence: Math.random()>0.5 ? "HEAD":"EYES",
       offsetDirection: randOffset,
-      offsetAngle: 5 + 10*Math.random()
+      offsetAngle: 5 + 5*Math.random()
 		}
     // Blink
     if(Math.random() < 0.8)
-    block.blink = {start: 0, end: 0.2 + Math.random()*0.5};
+    	block.blink = {start: 0, end: 0.2 + Math.random()*0.5};
     
     // Set to neutral face
     block.faceShift = {start: 0, end: 2, valaro: [0,0]};
@@ -196,11 +266,71 @@ BMLPlanner.prototype.createBlock = function(){
 
 
 
+// Automatic blink and saccades
+// http://hal.univ-grenoble-alpes.fr/hal-01025241/document
+BMLPlanner.prototype.updateBlinksAndSaccades = function(dt){
+  // Minimum time between saccades 150ms
+  // Commonly occurring saccades 5-10 deg durations 30-40ms
+  // Saccade latency to visual target is 200ms (min 100 ms)
+  // Frequency?
+  
+  // 10-30 blinks per minute during conversation (every two-six seconds)
+  // 1.4 - 14 blinks per min during reading
+  
+  var block = null;
+  
+  // Blink
+  this.blinkCountdown += dt;
+  if (this.blinkCountdown > this.blinkIdle){
+    block = {blink: {end: this.blinkDur}};
+    
+    this.blinkCountdown = this.blinkDur;
+    this.blinkIdle = this.blinkDur + 0.5 + Math.random()*10;
+    this.blinkDur = Math.random()*0.5 + 0.15;
+  }
+  
+  // Saccade
+  this.saccCountdown += dt;
+  if (this.saccCountdown > this.saccIdle){
+    // Random direction
+    var opts = ["RIGHT", "LEFT", "DOWN","DOWNRIGHT", "DOWNLEFT", "UP", "UPLEFT", "UPRIGHT"]; // If you are looking at the eyes usually don't look at the hair
+    var randDir = opts[Math.floor(Math.random()*opts.length)];
+    // Fixed point to saccade around?
+    var target = "EYESTARGET";
+    if (this.state == "LISTENING") target = "CAMERA";
+        
+    if (!block) block = {};
+    
+    block.gazeShift = {
+      start: 0,
+      end: Math.random()*0.1+0.1,
+      target: target, 
+      influence: "EYES",
+      offsetDirection: randDir,
+      offsetAngle: Math.random()*3 + 2
+    }
+    
+    this.saccCountdown = this.saccDur;
+    if (this.state == "LISTENING" || this.state == "SPEAKING")
+      this.saccIdle = this.saccDur + 2 + Math.random()*6;
+    else
+  		this.saccIdle = this.saccDur + 0.5 + Math.random()*6;
+  	
+    this.saccDur = Math.random()*0.5 + 0.5;
+  }
+  
+  
+  return block;
+}
 
 
 
 
 
+
+
+
+// -------------------- NEW BLOCK --------------------
 // New block arrives. It could be speech or control.
 BMLPlanner.prototype.newBlock = function(block){
   
@@ -230,7 +360,14 @@ BMLPlanner.prototype.newBlock = function(block){
 
 	// If non-verbal -> inside mode-selection.nonverbal
 	if (block.nonVerbal){
-		// Add gesture
+		// Add gesture (check arousal of message)
+    if (block.nonVerbal.constructor === Array){ // It is always an array in server
+      for (var i = 0; i < block.nonVerbal.length; i++){ // TODO -> relate nonVerbal with lg
+        var act = block.nonVerbal[i].dialogueAct;
+        block.gesture = {lexeme: act, start: 0, end: 2};
+      }
+    }
+    
 	}
 }
 
@@ -255,9 +392,8 @@ BMLPlanner.prototype.abortSpeech = function(){
 }
 
 
-BMLPlanner.prototype.attentionToUser = function(block){
+BMLPlanner.prototype.attentionToUser = function(block, overwrite){
   // If gazeShift already exists, modify
-  // TODO
 
 	var end = 0.5 + Math.random();
 	var startHead = 0;
@@ -294,14 +430,50 @@ BMLPlanner.prototype.attentionToUser = function(block){
   var faceShift = {
     start: startHead,
     end: end,
-    valaro: [this.defaultValence, Math.random*0.2],
+    valaro: [this.defaultValence, 0],
   }
   
   // Force and remove existing bml instructions
-  block.blink = blink;
-  block.faceShift = faceShift;
-  block.gazeShift = gazeShift;
-  block.headDirectionShift = headDir;
+  if (overwrite){
+    block.blink = blink;
+    block.faceShift = faceShift;
+    block.gazeShift = gazeShift;
+    block.headDirectionShift = headDir;
+  } else{
+    this.addToBlock(blink, block, "blink");
+    this.addToBlock(faceShift, block, "faceShift");
+    this.addToBlock(gazeShift, block, "gazeShift");
+    this.addToBlock(headDir, block, "headDirectionShift");
+  }
+}
+
+
+BMLPlanner.prototype.addToBlock = function(bml, block, key){
+  if (block[key]){
+    // Add to array (TODO: overwrite, merge etc...)
+    if (block[key].constructor === Array){
+      if (bml.constructor === Array)
+        for (var i = 0; i<bml.length; i++)
+          block[key].push(bml[i]);
+      else
+        block[key].push(bml);
+    }
+    // Transform object to array
+    else {
+      var tmpObj = block[key];
+      block[key] = [];
+      block[key].push(tmpObj);
+      if (bml.constructor === Array)
+        for (var i = 0; i<bml.length; i++)
+          block[key].push(bml[i]);
+       else
+        block[key].push(bml);
+    }
+  } 
+  // Doesn't exist yet
+  else
+    block[key] = bml;
+  
 }
 
 
@@ -314,8 +486,7 @@ BMLPlanner.prototype.attentionToUser = function(block){
 
 
 
-
-// ---------------------------- UTTERANCE MANAGEMENT ----------------------------
+// ---------------------------- NONVERBAL GENERATOR (for speech) ----------------------------
 // Process language generation message
 // Adds new bml instructions according to the dialogue act and speech
 BMLPlanner.prototype.processSpeechBlock = function(bmlLG, block, isLast){
@@ -358,28 +529,28 @@ BMLPlanner.prototype.processSpeechBlock = function(bmlLG, block, isLast){
 
 	// Add to block
   if (faceBrows)
-  	block.face.push(faceBrows);
+  	this.addToBlock(faceBrows, block, "face");
   if (isLast){
-    
-		block.faceShift = faceShiftsEnd;
+		this.addToBlock(faceShiftsEnd, block, "faceShift");
     // Arrange ending
     var lastFaceBrow = block.face[block.face.length-1];
-    if (lastFaceBrow.end > block.faceShift[0].start)
-   		block.face.pop();
+    if (lastFaceBrow)
+    	if (lastFaceBrow.end > block.faceShift[0].start)
+   			block.face.pop();
   }
-	block.head = head;
+  this.addToBlock(head, block, "head");
 
 	if (isLast){
-		block.headDirectionShift = gazeblinkEnd[2];
-		block.gazeShift = gazeblinkEnd[0];
-		block.blink.push(gazeblinkEnd[1]);
+		this.addToBlock(gazeblinkEnd[2], block, "headDirectionShift");
+		this.addToBlock(gazeblinkEnd[0], block, "gazeShift");
+		this.addToBlock(gazeblinkEnd[1], block, "blink");
   } else
-   block.blink.push(gazeblinkEnd);
+		this.addToBlock(gazeblinkEnd, block, "blink");
   
 
 	if (gazeblinkStart[0] != null){
-		block.gaze = gazeblinkStart[0];
-		block.blink.push(gazeblinkStart[1]);
+		this.addToBlock(gazeblinkStart[0], block, "gaze");
+		this.addToBlock(gazeblinkStart[1], block, "blink");
 	}
 
 }
@@ -392,6 +563,8 @@ BMLPlanner.prototype.processSpeechBlock = function(bmlLG, block, isLast){
 // Use longest word as prosody mark
 BMLPlanner.prototype.createBrowsUp = function(bmlLG){
 	var numWords = bmlLG.textTiming[0].length;
+  if (numWords == 0)
+    return undefined;
 
 	// Find prosody marks
 	// Use longer words for now (should be speech rate)
@@ -403,7 +576,7 @@ BMLPlanner.prototype.createBrowsUp = function(bmlLG){
 			maxInd = i;
 		}
 	}
-
+	
 	// Create eyebrow lexeme
 	var lexLongestWord = {
 		lexeme: "RAISE_BROWS",
@@ -419,7 +592,7 @@ BMLPlanner.prototype.createBrowsUp = function(bmlLG){
 	faceLongestWord.start = Math.max(0, bmlLG.textTiming[1][maxInd]-Math.random()*0.4); // Substract <0.4 from start of longest word
 	//faceLongestWord.attackPeak = Math.random()*maxT +  bmlLG.textTiming[1][maxInd]; // Add <wordTime to start of word
 	//faceLongestWord.relax = Math.max(faceLongestWord.attackPeak, Math.min(endOfSentence-0.2, faceLongestWord.attackPeak + Math.random()*maxT/2)); // Add <wordTime/2 to attackPeak
-	faceLongestWord.end = endOfSentence;Math.min(endOfSentence, faceLongestWord.relax + 0.2 + Math.random()*0.5); // Add 0.2 + <0.5 to relax
+	faceLongestWord.end = endOfSentence;//Math.min(endOfSentence, faceLongestWord.relax + 0.2 + Math.random()*0.5); // Add 0.2 + <0.5 to relax
 	// Add offset start
 	this.fixSyncStart(faceLongestWord, bmlLG.start);
 
@@ -430,7 +603,7 @@ BMLPlanner.prototype.createBrowsUp = function(bmlLG){
 
 
 
-// Generate two faceShifts at the end of speech
+// Generate faceShifts at the end of speech
 BMLPlanner.prototype.createEndFace = function(bmlLG){
 	var endOfSentence = bmlLG.duration;//bmlLG.textTiming[2][bmlLG.textTiming[2].length-1]; 
 
@@ -440,13 +613,13 @@ BMLPlanner.prototype.createEndFace = function(bmlLG){
 		bmlLG.valence = 0.5;
 	}
  
-	// Generate two faceShifts
-  var randomTiming = 0.2 + bmlLG.valence*(0.5 + Math.random());
+	// Generate one faceshit
+  var randomTiming = 0.5 + bmlLG.valence*(0.5 + Math.random());
 	var faceValence0 = {
 		id: "toFace" + parseInt(Math.random()*1000),
     valaro: [bmlLG.valence, 0],
-		start: endOfSentence - 0.5 * Math.random(),
-		end: endOfSentence + randomTiming// // If valence is high, should take more time?
+		start: endOfSentence,
+		end: endOfSentence+ randomTiming// // If valence is high, should take more time?
 	}
 
 	// Add offset start
@@ -460,7 +633,7 @@ BMLPlanner.prototype.createEndFace = function(bmlLG){
     start: faceValence0.id + ":end",
 		end: (faceValence0.id + ":end") + "+" + randomTiming // If valence is high, should take more time?
 	}
-
+  
 	return [faceValence0, faceValence1];
 }
 
@@ -499,13 +672,13 @@ BMLPlanner.prototype.createGazeStart = function(bmlLG){
 	// Random probability that a start gaze will happen on short-med speeches.
 	var gaze0 = null;
 	var blink0 = null;
-  if (endOfSentence > 3 + Math.random()*4){
+  if (true){//endOfSentence > 3 + Math.random()*4){
 		var start = Math.random()*0.2; // One second max to start movement
 		var ready = start + 0.5 + Math.random();
 		var relax = ready + 0.2 + Math.random()*0.5;
-		var end = ready + 0.5 + Math.random();
+		var end = ready + 1 + Math.random();
 
-		var offsetDirections = ["LEFT, RIGHT", "DOWNLEFT", "DOWNRIGHT"]; // TODO: Sure about these directions??
+		var offsetDirections = ["LEFT, RIGHT"]; // TODO: Sure about these directions??
 		var randOffset = offsetDirections[Math.floor(Math.random() * offsetDirections.length)];
 
 		gaze0 = {
@@ -516,7 +689,7 @@ BMLPlanner.prototype.createGazeStart = function(bmlLG){
 			end: end,
 			influence: "HEAD",
 			target: "CAMERA",
-			offsetAngle: 5 + Math.random()*15, // TODO: angle magnitude?
+			offsetAngle: 10,//5 + Math.random()*5, // TODO: angle magnitude?
 
 			offsetDirection: randOffset
 		}
